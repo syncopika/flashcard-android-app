@@ -1,0 +1,23 @@
+based off https://github.com/syncopika/flashcards
+
+references:
+https://stackoverflow.com/questions/68044576/how-to-make-flipcard-animation-in-jetpack-compose
+https://medium.com/mobile-app-development-publication/have-fun-with-jetpack-compose-graphicslayer-modifier-e39c12a4791f
+https://developer.android.com/jetpack/compose/components/card
+https://stackoverflow.com/questions/75443696/jetpack-compose-box-filled-the-whole-screen
+https://stackoverflow.com/questions/71753906/how-can-i-parse-a-local-json-file-from-assets-folder-into-a-jetpack-compose-lazy
+https://www.delasign.com/blog/android-studio-kotlin-json/
+https://developer.android.com/training/data-storage
+https://stackoverflow.com/questions/41928803/how-to-parse-json-in-kotlin
+https://stackoverflow.com/questions/56962608/how-to-read-json-file-from-assests-in-android-using-kotlin
+https://stackoverflow.com/questions/44117970/kotlin-data-class-from-json-using-gson
+https://stackoverflow.com/questions/48853750/kotlin-convert-json-array-to-model-list-using-gson
+https://stackoverflow.com/questions/65573008/detect-swipe-direction-on-jetpack-compose
+https://stackoverflow.com/questions/69596403/how-to-detect-motion-events-on-a-compose-button
+https://stackoverflow.com/questions/73676427/android-jetpack-compose-action-up-only-reached-for-tap-but-not-after-action-mov
+https://stackoverflow.com/questions/68172400/kotlin-composable-detectdraggestures-output-on-drop-position
+
+TODO:
+- shuffle cards
+- be able to search? by definition, pinyin, tags if any
+- be able to look up cards by writing a character and finding a match (integrate MLKit?)
