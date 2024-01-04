@@ -12,8 +12,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
@@ -42,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import com.example.flashcards.ui.theme.FlashcardsTheme
@@ -65,6 +72,8 @@ class MainActivity : ComponentActivity() {
         val data: String = assets.open("chinese.json").bufferedReader().use { it.readText() }
         val gson = Gson()
         val json = gson.fromJson(data, Array<ChineseJSONObject>::class.java)
+
+        val filteredCards = json.copyOf()
         //Log.i("INFO", json[0].value)
         //Log.i("INFO", data)
 
@@ -74,7 +83,9 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
 
                 var searchText by remember{ mutableStateOf("") }
+
                 val searchOptions = listOf("front", "back", "pinyin")
+                val (selectedOption, onOptionSelected) = remember{ mutableStateOf(searchOptions[0]) }
 
                 ModalNavigationDrawer(
                     drawerState = drawerState,
@@ -82,10 +93,37 @@ class MainActivity : ComponentActivity() {
                         ModalDrawerSheet {
                             OutlinedTextField(
                                 value=searchText,
-                                onValueChange={ searchText = it },
+                                onValueChange={ searchText = it /* TODO: depending on selectedOption, filter the flashcards */},
                                 label={Text("search")}
                             )
-                            Text("sdfhjfsjkdfjl")
+
+                            // Note that Modifier.selectableGroup() is essential to ensure correct accessibility behavior
+                            Column(Modifier.selectableGroup()) {
+                                searchOptions.forEach { text ->
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .height(56.dp)
+                                            .selectable(
+                                                selected = (text == selectedOption),
+                                                onClick = { onOptionSelected(text) },
+                                                role = Role.RadioButton
+                                            )
+                                            .padding(horizontal = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = (text == selectedOption),
+                                            onClick = null // null recommended for accessibility with screenreaders
+                                        )
+                                        Text(
+                                            text = text,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            modifier = Modifier.padding(start = 16.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     },
                 ) {
@@ -100,7 +138,8 @@ class MainActivity : ComponentActivity() {
                                     Text(
                                         text = "flashcards",
                                         fontSize = 6.em,
-                                        color = Color.White
+                                        color = Color.White,
+                                        modifier = Modifier.padding(4.dp, 0.dp, 0.dp, 0.dp)
                                     )
                                 },
                                 navigationIcon = {
@@ -110,6 +149,7 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.clickable(onClick = {
                                             scope.launch {
                                                 drawerState.apply {
+                                                    // TODO: also close keyboard if open
                                                     if (isClosed) open() else close()
                                                 }
                                             }
@@ -119,7 +159,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     ) { innerPadding ->
-                        MainContent(json, innerPadding)
+                        MainContent(filteredCards, innerPadding)
                     }
                 }
 
