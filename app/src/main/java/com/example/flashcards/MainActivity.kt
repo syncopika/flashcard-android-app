@@ -6,34 +6,48 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import com.example.flashcards.ui.theme.FlashcardsTheme
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.launch
 
 // {"value": "搖頭晃腦", "pinyin": "yao2 tou2 huang4 nao3", "definition": "to look pleased with one's self", "tags": ["idiom"]},
 data class ChineseJSONObject(
@@ -44,6 +58,7 @@ data class ChineseJSONObject(
 )
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -55,44 +70,101 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             FlashcardsTheme {
-                var offsetX by remember { mutableStateOf(0f) }
-                var currIndex by remember { mutableStateOf(100) }
+                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                val scope = rememberCoroutineScope()
 
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectDragGestures (
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    val (x, y) = dragAmount
-                                    offsetX += dragAmount.x
+                var searchText by remember{ mutableStateOf("") }
+                val searchOptions = listOf("front", "back", "pinyin")
+
+                ModalNavigationDrawer(
+                    drawerState = drawerState,
+                    drawerContent = {
+                        ModalDrawerSheet {
+                            OutlinedTextField(
+                                value=searchText,
+                                onValueChange={ searchText = it },
+                                label={Text("search")}
+                            )
+                            Text("sdfhjfsjkdfjl")
+                        }
+                    },
+                ) {
+                    Scaffold(
+                        topBar = {
+                            TopAppBar(
+                                colors = topAppBarColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    titleContentColor = MaterialTheme.colorScheme.primary,
+                                ),
+                                title = {
+                                    Text(
+                                        text = "flashcards",
+                                        fontSize = 6.em,
+                                        color = Color.White
+                                    )
                                 },
-                                onDragEnd = {
-                                    Log.i("INFO", "swipe done: " + offsetX)
-                                    if(offsetX > 0){
-                                        currIndex--
-                                        if(currIndex < 0){
-                                            currIndex = json.size - 1
-                                        }
-                                    }else{
-                                        currIndex++
-                                        if(currIndex > json.size - 1){
-                                            currIndex = 0
-                                        }
-                                    }
-                                    offsetX = 0f
+                                navigationIcon = {
+                                    Icon(
+                                        Icons.Default.Menu,
+                                        "",
+                                        modifier = Modifier.clickable(onClick = {
+                                            scope.launch {
+                                                drawerState.apply {
+                                                    if (isClosed) open() else close()
+                                                }
+                                            }
+                                        })
+                                    )
                                 }
                             )
                         }
-                    ,
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    ChineseFlashcard(currIndex, json)
+                    ) { innerPadding ->
+                        MainContent(json, innerPadding)
+                    }
                 }
+
             }
         }
+    }
+}
+
+@Composable
+fun MainContent(json: Array<ChineseJSONObject>, innerPadding: PaddingValues){
+    var offsetX by remember { mutableStateOf(0f) }
+    var currIndex by remember { mutableStateOf(100) }
+    // A surface container using the 'background' color from the theme
+    Surface(
+        modifier = Modifier
+            .padding(paddingValues = innerPadding)
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        val (x, y) = dragAmount
+                        offsetX += dragAmount.x
+                    },
+                    onDragEnd = {
+                        Log.i("INFO", "swipe done: " + offsetX)
+                        if (offsetX > 0) {
+                            currIndex--
+                            if (currIndex < 0) {
+                                currIndex = json.size - 1
+                            }
+                        } else {
+                            currIndex++
+                            if (currIndex > json.size - 1) {
+                                currIndex = 0
+                            }
+                        }
+                        offsetX = 0f
+                    }
+                )
+            }
+        ,
+        color = MaterialTheme.colorScheme.background
+    ) {
+        ChineseFlashcard(currIndex, json)
     }
 }
 
@@ -110,13 +182,6 @@ fun ChineseFlashcard(currIndex: Int, jsonData: Array<ChineseJSONObject>) {
     //Log.i("INFO", "hey there")
 
     Box {
-        Text(
-            text = "flashcards",
-            modifier = Modifier
-                .align(Alignment.TopCenter),
-            fontSize = 6.em,
-            color = Color.White
-        )
         Card(
             onClick = { rotated = !rotated },
             modifier = Modifier
