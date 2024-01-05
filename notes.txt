@@ -21,6 +21,8 @@ https://developer.android.com/jetpack/compose/components/drawer
 https://stackoverflow.com/questions/58840019/jetpack-compose-ui-how-to-create-searchview
 https://developer.android.com/jetpack/compose/text/user-input
 https://developer.android.com/reference/kotlin/androidx/compose/material3/package-summary#RadioButton(kotlin.Boolean,kotlin.Function0,androidx.compose.ui.Modifier,kotlin.Boolean,androidx.compose.material3.RadioButtonColors,androidx.compose.foundation.interaction.MutableInteractionSource)
+https://stackoverflow.com/questions/41790357/close-hide-the-android-soft-keyboard-with-kotlin
+https://stackoverflow.com/questions/72774367/multiple-different-pointerinput -> pay attention to the note about pointerInput creating a closure!
 
 TODO:
 - shuffle cards

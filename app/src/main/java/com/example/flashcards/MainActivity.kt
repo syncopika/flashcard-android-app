@@ -1,7 +1,9 @@
 package com.example.flashcards
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
+import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
@@ -44,10 +46,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -65,7 +69,8 @@ data class ChineseJSONObject(
 )
 
 class MainActivity : ComponentActivity() {
-    @OptIn(ExperimentalMaterial3Api::class)
+    // https://stackoverflow.com/questions/41790357/close-hide-the-android-soft-keyboard-with-kotlin
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -73,7 +78,6 @@ class MainActivity : ComponentActivity() {
         val gson = Gson()
         val json = gson.fromJson(data, Array<ChineseJSONObject>::class.java)
 
-        val filteredCards = json.copyOf()
         //Log.i("INFO", json[0].value)
         //Log.i("INFO", data)
 
@@ -87,14 +91,35 @@ class MainActivity : ComponentActivity() {
                 val searchOptions = listOf("front", "back", "pinyin")
                 val (selectedOption, onOptionSelected) = remember{ mutableStateOf(searchOptions[0]) }
 
+                // when the list of filtered cards changes, the view should be updated accordingly
+                var filteredCards by remember{ mutableStateOf(json.copyOf()) }
+
+                val inputMethodManager = LocalContext.current.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+
                 ModalNavigationDrawer(
                     drawerState = drawerState,
                     drawerContent = {
                         ModalDrawerSheet {
                             OutlinedTextField(
-                                value=searchText,
-                                onValueChange={ searchText = it /* TODO: depending on selectedOption, filter the flashcards */},
-                                label={Text("search")}
+                                value = searchText,
+                                onValueChange = {
+                                    searchText = it
+
+                                    filteredCards = json.filter {
+                                        if (selectedOption == "front") {
+                                            it.value == searchText
+                                        } else if (selectedOption == "back") {
+                                            it.definition.contains(searchText) || it.pinyin.contains(searchText)
+                                        } else if (selectedOption == "pinyin") {
+                                            it.pinyin.contains(searchText)
+                                        } else {
+                                            true
+                                        }
+                                    }.toTypedArray()
+
+                                    //Log.i("INFO", "filtered cards size: " + filteredCards.size)
+                                },
+                                label = {Text("search")}
                             )
 
                             // Note that Modifier.selectableGroup() is essential to ensure correct accessibility behavior
@@ -106,7 +131,9 @@ class MainActivity : ComponentActivity() {
                                             .height(56.dp)
                                             .selectable(
                                                 selected = (text == selectedOption),
-                                                onClick = { onOptionSelected(text) },
+                                                onClick = {
+                                                    onOptionSelected(text)
+                                                },
                                                 role = Role.RadioButton
                                             )
                                             .padding(horizontal = 16.dp),
@@ -149,8 +176,15 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.clickable(onClick = {
                                             scope.launch {
                                                 drawerState.apply {
-                                                    // TODO: also close keyboard if open
-                                                    if (isClosed) open() else close()
+                                                    if (isClosed) {
+                                                        Log.i("INFO", "opening drawer")
+                                                        open()
+                                                    } else {
+                                                        // TODO: can we get the keyboard to close if open?
+                                                        Log.i("INFO", "closing drawer")
+                                                        inputMethodManager.hideSoftInputFromWindow(window.currentFocus?.windowToken, 0)
+                                                        close()
+                                                    }
                                                 }
                                             }
                                         })
@@ -171,13 +205,19 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainContent(json: Array<ChineseJSONObject>, innerPadding: PaddingValues){
     var offsetX by remember { mutableStateOf(0f) }
-    var currIndex by remember { mutableStateOf(100) }
+    var currIndex by remember { mutableStateOf(0) }
+
+    // TODO: if the card data changes and it is of nonzero size, we should adjust currIndex to be 0
+    // e.g. we're on card num 672 but use the search filter and get back a data size of just 100,
+    // we should start on the 0th card of that 100-card dataset
+
     // A surface container using the 'background' color from the theme
     Surface(
         modifier = Modifier
             .padding(paddingValues = innerPadding)
             .fillMaxSize()
-            .pointerInput(Unit) {
+            // note we have to pass the card data since a closure is created
+            .pointerInput(json) {
                 detectDragGestures(
                     onDrag = { change, dragAmount ->
                         change.consume()
@@ -185,7 +225,6 @@ fun MainContent(json: Array<ChineseJSONObject>, innerPadding: PaddingValues){
                         offsetX += dragAmount.x
                     },
                     onDragEnd = {
-                        Log.i("INFO", "swipe done: " + offsetX)
                         if (offsetX > 0) {
                             currIndex--
                             if (currIndex < 0) {
@@ -204,7 +243,9 @@ fun MainContent(json: Array<ChineseJSONObject>, innerPadding: PaddingValues){
         ,
         color = MaterialTheme.colorScheme.background
     ) {
-        ChineseFlashcard(currIndex, json)
+        if (json.isNotEmpty()) {
+            ChineseFlashcard(currIndex, json)
+        }
     }
 }
 
@@ -218,8 +259,6 @@ fun ChineseFlashcard(currIndex: Int, jsonData: Array<ChineseJSONObject>) {
         animationSpec = tween(500),
         label = "cardRotation"
     )
-
-    //Log.i("INFO", "hey there")
 
     Box {
         Card(
