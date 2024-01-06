@@ -1,8 +1,10 @@
 package com.example.flashcards
 
+import android.app.Activity
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -51,7 +53,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -68,8 +69,34 @@ data class ChineseJSONObject(
     @SerializedName("tags") val tags: List<String>
 )
 
+// https://stackoverflow.com/questions/41790357/close-hide-the-android-soft-keyboard-with-kotlin
+fun Activity.hideKeyboard() {
+    hideKeyboard(currentFocus ?: View(this))
+}
+
+fun Context.hideKeyboard(view: View) {
+    val inputMethodManager = getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+    inputMethodManager.hideSoftInputFromWindow(view.windowToken, 0)
+}
+
+fun filterCards(cards: Array<ChineseJSONObject>, searchType: String, searchText: String): Array<ChineseJSONObject> {
+    return cards.filter {
+        //Log.i("INFO", searchText)
+        if (searchText.trim() == "") {
+            true
+        } else if (searchType == "front") {
+            it.value == searchText
+        } else if (searchType == "back") {
+            it.definition.contains(searchText) || it.pinyin.contains(searchText)
+        } else if (searchType == "pinyin") {
+            it.pinyin.contains(searchText)
+        } else {
+            true
+        }
+    }.toTypedArray()
+}
+
 class MainActivity : ComponentActivity() {
-    // https://stackoverflow.com/questions/41790357/close-hide-the-android-soft-keyboard-with-kotlin
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,18 +110,19 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             FlashcardsTheme {
-                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed) {
+                    hideKeyboard()
+                    true
+                }
                 val scope = rememberCoroutineScope()
 
                 var searchText by remember{ mutableStateOf("") }
-
                 val searchOptions = listOf("front", "back", "pinyin")
                 val (selectedOption, onOptionSelected) = remember{ mutableStateOf(searchOptions[0]) }
 
                 // when the list of filtered cards changes, the view should be updated accordingly
                 var filteredCards by remember{ mutableStateOf(json.copyOf()) }
-
-                val inputMethodManager = LocalContext.current.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                var currIndex by remember { mutableStateOf(0) }
 
                 ModalNavigationDrawer(
                     drawerState = drawerState,
@@ -105,19 +133,11 @@ class MainActivity : ComponentActivity() {
                                 onValueChange = {
                                     searchText = it
 
-                                    filteredCards = json.filter {
-                                        if (selectedOption == "front") {
-                                            it.value == searchText
-                                        } else if (selectedOption == "back") {
-                                            it.definition.contains(searchText) || it.pinyin.contains(searchText)
-                                        } else if (selectedOption == "pinyin") {
-                                            it.pinyin.contains(searchText)
-                                        } else {
-                                            true
-                                        }
-                                    }.toTypedArray()
+                                    filteredCards = filterCards(json, selectedOption, searchText)
 
                                     //Log.i("INFO", "filtered cards size: " + filteredCards.size)
+                                    // always reset curr index to 0 when we get a new filtered list
+                                    currIndex = 0
                                 },
                                 label = {Text("search")}
                             )
@@ -133,6 +153,8 @@ class MainActivity : ComponentActivity() {
                                                 selected = (text == selectedOption),
                                                 onClick = {
                                                     onOptionSelected(text)
+                                                    filteredCards = filterCards(json, text, searchText)
+                                                    currIndex = 0
                                                 },
                                                 role = Role.RadioButton
                                             )
@@ -177,12 +199,9 @@ class MainActivity : ComponentActivity() {
                                             scope.launch {
                                                 drawerState.apply {
                                                     if (isClosed) {
-                                                        Log.i("INFO", "opening drawer")
                                                         open()
                                                     } else {
                                                         // TODO: can we get the keyboard to close if open?
-                                                        Log.i("INFO", "closing drawer")
-                                                        inputMethodManager.hideSoftInputFromWindow(window.currentFocus?.windowToken, 0)
                                                         close()
                                                     }
                                                 }
@@ -191,25 +210,31 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             )
+                        },
+                        content = { innerPadding ->
+                            MainContent(
+                                { currIndex },
+                                { idx -> currIndex = idx},
+                                filteredCards,
+                                innerPadding
+                            )
                         }
-                    ) { innerPadding ->
-                        MainContent(filteredCards, innerPadding)
-                    }
+                    )
                 }
-
-            }
+            } // end FlashcardsTheme
         }
     }
 }
 
 @Composable
-fun MainContent(json: Array<ChineseJSONObject>, innerPadding: PaddingValues){
+fun MainContent(
+    getCurrIndex: () -> Int,
+    setCurrIndex: (index: Int) -> Unit,
+    json: Array<ChineseJSONObject>,
+    innerPadding: PaddingValues)
+{
     var offsetX by remember { mutableStateOf(0f) }
-    var currIndex by remember { mutableStateOf(0) }
-
-    // TODO: if the card data changes and it is of nonzero size, we should adjust currIndex to be 0
-    // e.g. we're on card num 672 but use the search filter and get back a data size of just 100,
-    // we should start on the 0th card of that 100-card dataset
+    var currIndex = getCurrIndex()
 
     // A surface container using the 'background' color from the theme
     Surface(
@@ -236,6 +261,7 @@ fun MainContent(json: Array<ChineseJSONObject>, innerPadding: PaddingValues){
                                 currIndex = 0
                             }
                         }
+                        setCurrIndex(currIndex)
                         offsetX = 0f
                     }
                 )

@@ -23,6 +23,7 @@ https://developer.android.com/jetpack/compose/text/user-input
 https://developer.android.com/reference/kotlin/androidx/compose/material3/package-summary#RadioButton(kotlin.Boolean,kotlin.Function0,androidx.compose.ui.Modifier,kotlin.Boolean,androidx.compose.material3.RadioButtonColors,androidx.compose.foundation.interaction.MutableInteractionSource)
 https://stackoverflow.com/questions/41790357/close-hide-the-android-soft-keyboard-with-kotlin
 https://stackoverflow.com/questions/72774367/multiple-different-pointerinput -> pay attention to the note about pointerInput creating a closure!
+https://stackoverflow.com/questions/74656346/kotlin-how-to-set-the-mutablestate-of-an-integer-in-another-composable-function
 
 TODO:
 - shuffle cards
