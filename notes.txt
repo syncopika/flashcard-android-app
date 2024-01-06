@@ -16,6 +16,14 @@ https://stackoverflow.com/questions/65573008/detect-swipe-direction-on-jetpack-c
 https://stackoverflow.com/questions/69596403/how-to-detect-motion-events-on-a-compose-button
 https://stackoverflow.com/questions/73676427/android-jetpack-compose-action-up-only-reached-for-tap-but-not-after-action-mov
 https://stackoverflow.com/questions/68172400/kotlin-composable-detectdraggestures-output-on-drop-position
+https://stackoverflow.com/questions/63738585/add-drawer-toggle-button-in-jetpack-compose
+https://developer.android.com/jetpack/compose/components/drawer
+https://stackoverflow.com/questions/58840019/jetpack-compose-ui-how-to-create-searchview
+https://developer.android.com/jetpack/compose/text/user-input
+https://developer.android.com/reference/kotlin/androidx/compose/material3/package-summary#RadioButton(kotlin.Boolean,kotlin.Function0,androidx.compose.ui.Modifier,kotlin.Boolean,androidx.compose.material3.RadioButtonColors,androidx.compose.foundation.interaction.MutableInteractionSource)
+https://stackoverflow.com/questions/41790357/close-hide-the-android-soft-keyboard-with-kotlin
+https://stackoverflow.com/questions/72774367/multiple-different-pointerinput -> pay attention to the note about pointerInput creating a closure!
+https://stackoverflow.com/questions/74656346/kotlin-how-to-set-the-mutablestate-of-an-integer-in-another-composable-function
 
 TODO:
 - shuffle cards
