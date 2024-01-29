@@ -24,8 +24,10 @@ https://developer.android.com/reference/kotlin/androidx/compose/material3/packag
 https://stackoverflow.com/questions/41790357/close-hide-the-android-soft-keyboard-with-kotlin
 https://stackoverflow.com/questions/72774367/multiple-different-pointerinput -> pay attention to the note about pointerInput creating a closure!
 https://stackoverflow.com/questions/74656346/kotlin-how-to-set-the-mutablestate-of-an-integer-in-another-composable-function
+https://stackoverflow.com/questions/71882353/show-trailing-icon-after-text-input-from-user-in-textfield-jetpack-compose
+https://stackoverflow.com/questions/71090111/how-to-draw-on-jetpack-compose-canvas-using-touch-events
 
 TODO:
 - shuffle cards
-- be able to search? by definition, pinyin, tags if any
-- be able to look up cards by writing a character and finding a match (integrate MLKit?)
+- be able to search? by tags if any
+- guessing game mode?

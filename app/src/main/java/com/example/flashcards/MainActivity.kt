@@ -21,9 +21,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -33,6 +36,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedTextField
@@ -54,8 +58,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.window.Dialog
+import com.example.flashcards.ui.theme.DrawingCanvas
 import com.example.flashcards.ui.theme.FlashcardsTheme
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
@@ -124,107 +131,149 @@ class MainActivity : ComponentActivity() {
                 var filteredCards by remember{ mutableStateOf(json.copyOf()) }
                 var currIndex by remember { mutableStateOf(0) }
 
-                ModalNavigationDrawer(
-                    drawerState = drawerState,
-                    drawerContent = {
-                        ModalDrawerSheet {
-                            OutlinedTextField(
-                                value = searchText,
-                                onValueChange = {
-                                    searchText = it
+                var showDrawingCanvas by remember{ mutableStateOf(false) }
 
-                                    filteredCards = filterCards(json, selectedOption, searchText)
+                // pencil icon composable to add to the search bar to provide
+                // an option of writing a character to search for
+                val trailingIconView = @Composable {
+                    IconButton(
+                        onClick = {
+                            //Log.i("INFO", "opening canvas")
+                            showDrawingCanvas = true
+                        },
+                    ) {
+                        Icon(
+                            Icons.Default.Create,
+                            contentDescription = ""
+                        )
+                    }
+                }
 
-                                    //Log.i("INFO", "filtered cards size: " + filteredCards.size)
-                                    // always reset curr index to 0 when we get a new filtered list
-                                    currIndex = 0
-                                },
-                                label = {Text("search")}
-                            )
+                if (showDrawingCanvas) {
+                    DrawingCanvasDialog { showDrawingCanvas = false }
+                } else {
+                    ModalNavigationDrawer(
+                        drawerState = drawerState,
+                        drawerContent = {
+                            ModalDrawerSheet {
+                                OutlinedTextField(
+                                    value = searchText,
+                                    onValueChange = {
+                                        searchText = it
 
-                            // Note that Modifier.selectableGroup() is essential to ensure correct accessibility behavior
-                            Column(Modifier.selectableGroup()) {
-                                searchOptions.forEach { text ->
-                                    Row(
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .height(56.dp)
-                                            .selectable(
+                                        filteredCards =
+                                            filterCards(json, selectedOption, searchText)
+
+                                        //Log.i("INFO", "filtered cards size: " + filteredCards.size)
+                                        // always reset curr index to 0 when we get a new filtered list
+                                        currIndex = 0
+                                    },
+                                    label = { Text("search") },
+                                    trailingIcon = trailingIconView,
+                                )
+
+                                // Note that Modifier.selectableGroup() is essential to ensure correct accessibility behavior
+                                Column(Modifier.selectableGroup()) {
+                                    searchOptions.forEach { text ->
+                                        Row(
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .height(56.dp)
+                                                .selectable(
+                                                    selected = (text == selectedOption),
+                                                    onClick = {
+                                                        onOptionSelected(text)
+                                                        filteredCards =
+                                                            filterCards(json, text, searchText)
+                                                        currIndex = 0
+                                                    },
+                                                    role = Role.RadioButton
+                                                )
+                                                .padding(horizontal = 16.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            RadioButton(
                                                 selected = (text == selectedOption),
-                                                onClick = {
-                                                    onOptionSelected(text)
-                                                    filteredCards = filterCards(json, text, searchText)
-                                                    currIndex = 0
-                                                },
-                                                role = Role.RadioButton
+                                                onClick = null // null recommended for accessibility with screenreaders
                                             )
-                                            .padding(horizontal = 16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        RadioButton(
-                                            selected = (text == selectedOption),
-                                            onClick = null // null recommended for accessibility with screenreaders
-                                        )
-                                        Text(
-                                            text = text,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            modifier = Modifier.padding(start = 16.dp)
-                                        )
+                                            Text(
+                                                text = text,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                modifier = Modifier.padding(start = 16.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
-                        }
-                    },
-                ) {
-                    Scaffold(
-                        topBar = {
-                            TopAppBar(
-                                colors = topAppBarColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    titleContentColor = MaterialTheme.colorScheme.primary,
-                                ),
-                                title = {
-                                    Text(
-                                        text = "flashcards",
-                                        fontSize = 6.em,
-                                        color = Color.White,
-                                        modifier = Modifier.padding(4.dp, 0.dp, 0.dp, 0.dp)
-                                    )
-                                },
-                                navigationIcon = {
-                                    Icon(
-                                        Icons.Default.Menu,
-                                        "",
-                                        modifier = Modifier.clickable(onClick = {
-                                            scope.launch {
-                                                drawerState.apply {
-                                                    if (isClosed) {
-                                                        open()
-                                                    } else {
-                                                        // TODO: can we get the keyboard to close if open?
-                                                        close()
+                        },
+                    ) {
+                        Scaffold(
+                            topBar = {
+                                TopAppBar(
+                                    colors = topAppBarColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        titleContentColor = MaterialTheme.colorScheme.primary,
+                                    ),
+                                    title = {
+                                        Text(
+                                            text = "flashcards",
+                                            fontSize = 6.em,
+                                            color = Color.White,
+                                            modifier = Modifier.padding(4.dp, 0.dp, 0.dp, 0.dp)
+                                        )
+                                    },
+                                    navigationIcon = {
+                                        Icon(
+                                            Icons.Default.Menu,
+                                            "",
+                                            modifier = Modifier.clickable(onClick = {
+                                                scope.launch {
+                                                    drawerState.apply {
+                                                        if (isClosed) {
+                                                            open()
+                                                        } else {
+                                                            // TODO: can we get the keyboard to close if open?
+                                                            close()
+                                                        }
                                                     }
                                                 }
-                                            }
-                                        })
-                                    )
-                                }
-                            )
-                        },
-                        content = { innerPadding ->
-                            MainContent(
-                                { currIndex },
-                                { idx -> currIndex = idx},
-                                filteredCards,
-                                innerPadding
-                            )
-                        }
-                    )
+                                            })
+                                        )
+                                    }
+                                )
+                            },
+                            content = { innerPadding ->
+                                MainContent(
+                                    { currIndex },
+                                    { idx -> currIndex = idx },
+                                    filteredCards,
+                                    innerPadding
+                                )
+                            }
+                        )
+                    }
                 }
             } // end FlashcardsTheme
         }
     }
 }
+
+@Composable
+fun DrawingCanvasDialog(onDismissRequest: () -> Unit) {
+    Dialog(onDismissRequest = { onDismissRequest() }) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(500.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            // TODO: add MLKit
+            DrawingCanvas()
+        }
+    }
+}
+
 
 @Composable
 fun MainContent(
@@ -241,7 +290,7 @@ fun MainContent(
         modifier = Modifier
             .padding(paddingValues = innerPadding)
             .fillMaxSize()
-            // note we have to pass the card data since a closure is created
+            // note we have to pass the card data json since a closure is created
             .pointerInput(json) {
                 detectDragGestures(
                     onDrag = { change, dragAmount ->
