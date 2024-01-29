@@ -26,6 +26,9 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.unit.dp
+import com.google.mlkit.vision.digitalink.Ink
+
+// https://github.com/syncopika/digital-ink-recognition-android/blob/main/app/src/main/java/com/example/digital_ink_recognition_and_ocr/CanvasView.kt
 
 // https://stackoverflow.com/questions/71090111/how-to-draw-on-jetpack-compose-canvas-using-touch-events
 enum class MotionEvents { Idle, Up, Down, Move }
@@ -40,12 +43,16 @@ class CanvasCoord(x: Float, y: Float){
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun DrawingCanvas() {
+fun DrawingCanvas(inkBuilder: Ink.Builder) {
     var motionEvent by remember { mutableStateOf(MotionEvents.Idle) }
     var currPosition by remember { mutableStateOf<CanvasCoord?>(null) }
     var prevPosition by remember { mutableStateOf<CanvasCoord?>(null) }
 
     val path = remember { Path() }
+
+    //val inkBuilder = Ink.Builder()
+    var strokeBuilder = Ink.Stroke.builder()
+    var currTime = 0L
 
     val drawModifier = Modifier
         .fillMaxWidth()
@@ -54,16 +61,22 @@ fun DrawingCanvas() {
         .clipToBounds()
         .background(Color.White)
         .pointerInteropFilter { event ->
+
+            currTime = System.currentTimeMillis()
+
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     motionEvent = MotionEvents.Down
                     //Log.i("INFO", "motion event down" + "x: " + event.x + ", y: " + event.y)
-                    //prevPosition = CanvasCoord(event.x, event.y)
+                    prevPosition = CanvasCoord(event.x, event.y)
                     currPosition = CanvasCoord(event.x, event.y)
                     true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
+                    // TODO: move actions seem to get registered too easily
+                    // maybe check distance between this pos and prev pos
+                    // and have some threshold to determine if it really is a move
                     motionEvent = MotionEvents.Move
                     //Log.i("INFO", "motion event move")
                     prevPosition = currPosition
@@ -87,6 +100,11 @@ fun DrawingCanvas() {
             MotionEvents.Down -> {
                 if (currPosition != null) {
                     path.moveTo(currPosition!!.x, currPosition!!.y)
+
+                    strokeBuilder = Ink.Stroke.builder()
+                    strokeBuilder.addPoint(
+                        Ink.Point.create(currPosition!!.x, currPosition!!.y, currTime)
+                    )
                 }
             }
 
@@ -98,15 +116,26 @@ fun DrawingCanvas() {
                         (prevPosition!!.x + currPosition!!.x) / 2,
                         (prevPosition!!.y + currPosition!!.y) / 2
                     )
+
+                    strokeBuilder.addPoint(
+                        Ink.Point.create(currPosition!!.x, currPosition!!.y, currTime)
+                    )
                 }
             }
 
             MotionEvents.Up -> {
                 if (currPosition != null) {
                     path.lineTo(currPosition!!.x, currPosition!!.y)
+
+                    strokeBuilder.addPoint(
+                        Ink.Point.create(currPosition!!.x, currPosition!!.y, currTime)
+                    )
+
                     prevPosition = null
                     currPosition = null
                 }
+
+                inkBuilder.addStroke(strokeBuilder.build())
             }
 
             else -> Unit
@@ -115,7 +144,11 @@ fun DrawingCanvas() {
         drawPath(
             color = Color.Black,
             path = path,
-            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+            style = Stroke(
+                width = 4.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
         )
     }
 }

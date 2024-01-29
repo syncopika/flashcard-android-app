@@ -26,6 +26,7 @@ https://stackoverflow.com/questions/72774367/multiple-different-pointerinput -> 
 https://stackoverflow.com/questions/74656346/kotlin-how-to-set-the-mutablestate-of-an-integer-in-another-composable-function
 https://stackoverflow.com/questions/71882353/show-trailing-icon-after-text-input-from-user-in-textfield-jetpack-compose
 https://stackoverflow.com/questions/71090111/how-to-draw-on-jetpack-compose-canvas-using-touch-events
+https://stackoverflow.com/questions/67185495/draw-two-buttons-in-a-row-using-jetpack-compose
 
 TODO:
 - shuffle cards

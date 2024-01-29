@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -66,6 +67,7 @@ import com.example.flashcards.ui.theme.DrawingCanvas
 import com.example.flashcards.ui.theme.FlashcardsTheme
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import com.google.mlkit.vision.digitalink.Ink
 import kotlinx.coroutines.launch
 
 // {"value": "搖頭晃腦", "pinyin": "yao2 tou2 huang4 nao3", "definition": "to look pleased with one's self", "tags": ["idiom"]},
@@ -268,8 +270,22 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit) {
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
-            // TODO: add MLKit
-            DrawingCanvas()
+            val inkBuilder = Ink.Builder()
+            DrawingCanvas(inkBuilder)
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth().padding(8.dp)
+            ) {
+                Button(onClick = {
+                    // TODO: build ink and do recognition
+                    Log.i("INFO", "ink builder is empty: " + inkBuilder.isEmpty)
+                }) {
+                    Text(text = "submit")
+                }
+                Button(onClick = onDismissRequest) {
+                    Text(text = "cancel")
+                }
+            }
         }
     }
 }
