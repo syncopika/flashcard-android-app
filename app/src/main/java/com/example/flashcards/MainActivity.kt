@@ -56,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
@@ -103,7 +104,7 @@ fun filterCards(cards: Array<ChineseJSONObject>, searchType: String, searchText:
         if (searchText.trim() == "") {
             true
         } else if (searchType == "front") {
-            it.value == searchText
+            it.value.contains(searchText)
         } else if (searchType == "back") {
             it.definition.contains(searchText) || it.pinyin.contains(searchText)
         } else if (searchType == "pinyin") {
@@ -164,7 +165,12 @@ class MainActivity : ComponentActivity() {
                 if (showDrawingCanvas) {
                     DrawingCanvasDialog (
                         { showDrawingCanvas = false },
-                        { searchTextVal: String -> searchText = searchTextVal }
+                        { searchTextVal: String ->
+                            searchText = searchTextVal
+                            filteredCards =
+                                filterCards(json, selectedOption, searchText)
+                            currIndex = 0
+                        }
                     )
                 } else {
                     ModalNavigationDrawer(
@@ -247,7 +253,6 @@ class MainActivity : ComponentActivity() {
                                                         if (isClosed) {
                                                             open()
                                                         } else {
-                                                            // TODO: can we get the keyboard to close if open?
                                                             close()
                                                         }
                                                     }
@@ -309,11 +314,16 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearc
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
-            val inkBuilder = Ink.Builder()
-            DrawingCanvas(inkBuilder)
+            var inkBuilder by remember { mutableStateOf(Ink.Builder()) }
+            val path = remember { Path() }
+
+            DrawingCanvas(inkBuilder, path)
+
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth().padding(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
             ) {
                 Button(onClick = {
                     // TODO: build ink and do recognition
@@ -365,6 +375,12 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearc
 
                 }) {
                     Text(text = "submit")
+                }
+                Button(onClick = {
+                    path.reset()
+                    inkBuilder = Ink.Builder()
+                }) {
+                    Text(text = "clear")
                 }
                 Button(onClick = onDismissRequest) {
                     Text(text = "cancel")

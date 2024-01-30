@@ -43,20 +43,16 @@ class CanvasCoord(x: Float, y: Float){
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun DrawingCanvas(inkBuilder: Ink.Builder) {
+fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
     var motionEvent by remember { mutableStateOf(MotionEvents.Idle) }
     var currPosition by remember { mutableStateOf<CanvasCoord?>(null) }
     var prevPosition by remember { mutableStateOf<CanvasCoord?>(null) }
 
-    val path = remember { Path() }
-
-    //val inkBuilder = Ink.Builder()
     var strokeBuilder = Ink.Stroke.builder()
     var currTime = 0L
 
     val drawModifier = Modifier
         .fillMaxWidth()
-        //.fillMaxHeight()
         .height(400.dp)
         .clipToBounds()
         .background(Color.White)
