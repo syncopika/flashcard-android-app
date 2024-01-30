@@ -67,7 +67,16 @@ import com.example.flashcards.ui.theme.DrawingCanvas
 import com.example.flashcards.ui.theme.FlashcardsTheme
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import com.google.mlkit.common.MlKitException
+import com.google.mlkit.common.model.DownloadConditions
+import com.google.mlkit.common.model.RemoteModelManager
+import com.google.mlkit.vision.digitalink.DigitalInkRecognition
+import com.google.mlkit.vision.digitalink.DigitalInkRecognitionModel
+import com.google.mlkit.vision.digitalink.DigitalInkRecognitionModelIdentifier
+import com.google.mlkit.vision.digitalink.DigitalInkRecognizer
+import com.google.mlkit.vision.digitalink.DigitalInkRecognizerOptions
 import com.google.mlkit.vision.digitalink.Ink
+import com.google.mlkit.vision.digitalink.RecognitionResult
 import kotlinx.coroutines.launch
 
 // {"value": "搖頭晃腦", "pinyin": "yao2 tou2 huang4 nao3", "definition": "to look pleased with one's self", "tags": ["idiom"]},
@@ -123,6 +132,7 @@ class MainActivity : ComponentActivity() {
                     hideKeyboard()
                     true
                 }
+
                 val scope = rememberCoroutineScope()
 
                 var searchText by remember{ mutableStateOf("") }
@@ -152,7 +162,10 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (showDrawingCanvas) {
-                    DrawingCanvasDialog { showDrawingCanvas = false }
+                    DrawingCanvasDialog (
+                        { showDrawingCanvas = false },
+                        { searchTextVal: String -> searchText = searchTextVal }
+                    )
                 } else {
                     ModalNavigationDrawer(
                         drawerState = drawerState,
@@ -261,7 +274,33 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun DrawingCanvasDialog(onDismissRequest: () -> Unit) {
+fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearchTextVal: String) -> Unit) {
+
+    fun doInkRecognition(model: DigitalInkRecognitionModel, inkData: Ink){
+        //showSnackbar(R.string.processing_msg)
+
+        val recognizer: DigitalInkRecognizer = DigitalInkRecognition.getClient(
+            DigitalInkRecognizerOptions.builder(model).build()
+        )
+
+        recognizer.recognize(inkData)
+            .addOnSuccessListener { result: RecognitionResult ->
+                // TODO: also get the definition of the character(s)
+                // also handle possibility of multiple characters?
+                val res = result.candidates[0].text
+
+                Log.i("INFO", res)
+
+                onSubmitRequest(res)
+                onDismissRequest()
+            }
+            .addOnFailureListener { e: Exception ->
+                //showSnackbar(R.string.failure_msg_recognition)
+                Log.e("ERROR", "Error during recognition: $e")
+                onDismissRequest()
+            }
+    }
+
     Dialog(onDismissRequest = { onDismissRequest() }) {
         Card(
             modifier = Modifier
@@ -279,6 +318,51 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit) {
                 Button(onClick = {
                     // TODO: build ink and do recognition
                     Log.i("INFO", "ink builder is empty: " + inkBuilder.isEmpty)
+                    val inkData = inkBuilder.build()
+
+                    var modelIdentifier: DigitalInkRecognitionModelIdentifier? = null
+                    try {
+                        // traditional chinese
+                        modelIdentifier = DigitalInkRecognitionModelIdentifier.fromLanguageTag("zh-TW")
+
+                        if (modelIdentifier != null) {
+                            val model = DigitalInkRecognitionModel.builder(modelIdentifier).build()
+                            val remoteModelManager = RemoteModelManager.getInstance()
+
+                            //showSnackbar(R.string.check_download_language_msg)
+
+                            remoteModelManager.isModelDownloaded(model).addOnSuccessListener { bool ->
+                                when (bool) {
+                                    true -> {
+                                        //showSnackbar(R.string.downloaded_language_msg)
+                                        doInkRecognition(model, inkData)
+                                    }
+                                    false -> {
+                                        // download it
+                                        //showSnackbar(R.string.download_language_msg)
+                                        Log.i("INFO", "NEED TO DOWNLOAD MODEL")
+
+                                        remoteModelManager.download(model, DownloadConditions.Builder().build())
+                                            .addOnSuccessListener {
+                                                Log.i("INFO", "Model downloaded")
+                                                //showSnackbar(R.string.downloaded_language_msg)
+                                                doInkRecognition(model, inkData)
+                                            }
+                                            .addOnFailureListener { e: Exception ->
+                                                //showSnackbar(R.string.failure_msg_download)
+                                                Log.e("ERROR", "Error while downloading a model: $e")
+                                            }
+                                    }
+                                }
+                            }
+                        }else{
+                            // no model was found, handle error.
+                        }
+                    } catch (e: MlKitException) {
+                        // language tag failed to parse, handle error.
+                    }
+
+
                 }) {
                     Text(text = "submit")
                 }
