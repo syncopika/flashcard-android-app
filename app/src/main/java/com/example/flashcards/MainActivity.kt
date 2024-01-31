@@ -290,8 +290,6 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearc
 
         recognizer.recognize(inkData)
             .addOnSuccessListener { result: RecognitionResult ->
-                // TODO: also get the definition of the character(s)
-                // also handle possibility of multiple characters?
                 val res = result.candidates[0].text
 
                 Log.i("INFO", res)
@@ -326,8 +324,6 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearc
                     .padding(8.dp)
             ) {
                 Button(onClick = {
-                    // TODO: build ink and do recognition
-                    Log.i("INFO", "ink builder is empty: " + inkBuilder.isEmpty)
                     val inkData = inkBuilder.build()
 
                     var modelIdentifier: DigitalInkRecognitionModelIdentifier? = null
