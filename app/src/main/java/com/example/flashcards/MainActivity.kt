@@ -308,8 +308,8 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearc
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(500.dp)
-                .padding(16.dp),
+                .height(600.dp)
+                .padding(14.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
             var inkBuilder by remember { mutableStateOf(Ink.Builder()) }
