@@ -54,7 +54,9 @@ fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
     fun touchStart() {
         path.moveTo(currPosition.x, currPosition.y)
         strokeBuilder = Ink.Stroke.builder()
-        strokeBuilder.addPoint(Ink.Point.create(currPosition.x, currPosition.y, currTime))
+        strokeBuilder.addPoint(
+            Ink.Point.create(currPosition.x, currPosition.y, currTime)
+        )
         prevPosition = currPosition
     }
 
@@ -93,7 +95,7 @@ fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
         .pointerInteropFilter { event ->
             currTime = System.currentTimeMillis()
             currPosition = CanvasCoord(event.x, event.y)
-            Log.i("INFO", "curr pos: " + event.x.toString() + ", " + event.y.toString())
+            //Log.i("INFO", "curr pos: " + event.x.toString() + ", " + event.y.toString())
 
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
