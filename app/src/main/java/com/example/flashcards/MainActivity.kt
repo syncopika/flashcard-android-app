@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,7 +59,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.window.Dialog
@@ -79,6 +77,7 @@ import com.google.mlkit.vision.digitalink.DigitalInkRecognizerOptions
 import com.google.mlkit.vision.digitalink.Ink
 import com.google.mlkit.vision.digitalink.RecognitionResult
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 // {"value": "搖頭晃腦", "pinyin": "yao2 tou2 huang4 nao3", "definition": "to look pleased with one's self", "tags": ["idiom"]},
 data class ChineseJSONObject(
@@ -225,6 +224,13 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
+                                
+                                Button(onClick = {
+                                    filteredCards.shuffle()
+                                    currIndex = Random.nextInt(0, filteredCards.size)
+                                }) {
+                                    Text("shuffle")
+                                }
                             }
                         },
                     ) {
@@ -274,8 +280,8 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             } // end FlashcardsTheme
-        }
-    }
+        } // end setContent
+    } // end onCreate
 }
 
 @Composable
@@ -291,9 +297,7 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearc
         recognizer.recognize(inkData)
             .addOnSuccessListener { result: RecognitionResult ->
                 val res = result.candidates[0].text
-
-                Log.i("INFO", res)
-
+                //Log.i("INFO", res)
                 onSubmitRequest(res)
                 onDismissRequest()
             }
@@ -367,8 +371,6 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearc
                     } catch (e: MlKitException) {
                         // language tag failed to parse, handle error.
                     }
-
-
                 }) {
                     Text(text = "submit")
                 }
@@ -391,7 +393,7 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearc
 fun MainContent(
     getCurrIndex: () -> Int,
     setCurrIndex: (index: Int) -> Unit,
-    json: Array<ChineseJSONObject>,
+    cards: Array<ChineseJSONObject>,
     innerPadding: PaddingValues)
 {
     var offsetX by remember { mutableStateOf(0f) }
@@ -402,8 +404,9 @@ fun MainContent(
         modifier = Modifier
             .padding(paddingValues = innerPadding)
             .fillMaxSize()
-            // note we have to pass the card data json since a closure is created
-            .pointerInput(json) {
+            // note we have to pass the most current card data json + current index since a closure is created
+            // otherwise detectDragGestures will just use the initial values
+            .pointerInput(cards, currIndex) {
                 detectDragGestures(
                     onDrag = { change, dragAmount ->
                         change.consume()
@@ -414,11 +417,11 @@ fun MainContent(
                         if (offsetX > 0) {
                             currIndex--
                             if (currIndex < 0) {
-                                currIndex = json.size - 1
+                                currIndex = cards.size - 1
                             }
                         } else {
                             currIndex++
-                            if (currIndex > json.size - 1) {
+                            if (currIndex > cards.size - 1) {
                                 currIndex = 0
                             }
                         }
@@ -430,8 +433,8 @@ fun MainContent(
         ,
         color = MaterialTheme.colorScheme.background
     ) {
-        if (json.isNotEmpty()) {
-            ChineseFlashcard(currIndex, json)
+        if (cards.isNotEmpty()) {
+            ChineseFlashcard(currIndex, cards)
         }
     }
 }
@@ -496,7 +499,7 @@ fun ChineseFlashcard(currIndex: Int, jsonData: Array<ChineseJSONObject>) {
         }
         // show card number at bottom-right of screen
         Text(
-            text = "$currIndex/${jsonData.size}",
+            text = "${currIndex+1}/${jsonData.size}",
             modifier = Modifier
                 .align(Alignment.BottomEnd),
             color = Color.White
