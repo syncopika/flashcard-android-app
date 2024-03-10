@@ -39,6 +39,7 @@ class CanvasCoord(x: Float, y: Float){
     val y = y
 }
 
+// TODO: the drawing canvas is a bit buggy - sometimes when drawing a new stroke, it'll get connected to a previous stroke
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
@@ -64,7 +65,7 @@ fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
         val dx = abs(currPosition.x - prevPosition.x)
         val dy = abs(currPosition.y - prevPosition.y)
 
-        if(dx >= touchTolerance || dy >= touchTolerance) {
+        if (dx >= touchTolerance || dy >= touchTolerance) {
             path.quadraticBezierTo(
                 prevPosition.x,
                 prevPosition.y,

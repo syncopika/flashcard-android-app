@@ -30,6 +30,5 @@ https://stackoverflow.com/questions/67185495/draw-two-buttons-in-a-row-using-jet
 https://stackoverflow.com/questions/58743541/how-to-get-context-in-jetpack-compose
 
 TODO:
-- shuffle cards
 - be able to search by tags if any
 - guessing game mode?
