@@ -7,7 +7,7 @@ You can traverse the cards by swiping left and right. Tapping on the card will f
 some screenshots:    
 ![screenshot of flashcard front](screenshots/Screenshot_20240105-212644.png)   
 ![screenshot of flashcard back](screenshots/Screenshot_20240105-212702.png)     
-![screenshot of flashcard search options](screenshots/Screenshot_20240130-183706.png)    
+![screenshot of flashcard search options](screenshots/Screenshot_20240310-104242.png)    
     
 clicking on the pencil icon in the search box will present a canvas that you can write on, which allows you to search based on a specific Chinese character. The character recognition is powered by Google's ML Kit, and may not always be 100% accurate.    
 ![screenshot of flashcard search canvas](screenshots/Screenshot_20240130-183745.png)    
