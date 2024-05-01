@@ -40,6 +40,10 @@ class CanvasCoord(x: Float, y: Float){
 }
 
 // TODO: the drawing canvas is a bit buggy - sometimes when drawing a new stroke, it'll get connected to a previous stroke
+// it seems like sometimes when the MotionEvent.ACTION_DOWN is received, the motionEvent var still doesn't get set to MotionEvents.Down
+// and so it's like a down event gets skipped, which causes the connected lines I think :(
+// the good news is that the lines still seem to be recognized accurately enough for me :)
+// maybe related? https://stackoverflow.com/questions/69717229/android-motionevent-gets-changed-corrupted-by-jetpack-compose-mutablestate
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
@@ -53,6 +57,7 @@ fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
     var currTime = 0L
 
     fun touchStart() {
+        Log.i("INFO", "got a down event")
         path.moveTo(currPosition.x, currPosition.y)
         strokeBuilder = Ink.Stroke.builder()
         strokeBuilder.addPoint(
@@ -62,6 +67,7 @@ fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
     }
 
     fun touchMove() {
+        Log.i("INFO", "drawing...")
         val dx = abs(currPosition.x - prevPosition.x)
         val dy = abs(currPosition.y - prevPosition.y)
 
@@ -82,10 +88,12 @@ fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
     }
 
     fun touchUp() {
+        Log.i("INFO", "got an up event")
         strokeBuilder.addPoint(
             Ink.Point.create(currPosition.x, currPosition.y, currTime)
         )
         inkBuilder.addStroke(strokeBuilder.build())
+        //motionEvent = MotionEvents.Idle
     }
 
     val drawModifier = Modifier
@@ -96,26 +104,32 @@ fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
         .pointerInteropFilter { event ->
             currTime = System.currentTimeMillis()
             currPosition = CanvasCoord(event.x, event.y)
-            //Log.i("INFO", "curr pos: " + event.x.toString() + ", " + event.y.toString())
+
+            /*
+            Log.i(
+                "INFO",
+                "curr pos: " + currPosition.x.toString() + ", " + currPosition.y.toString() + ", prev pos: " + prevPosition.x.toString() + ", " + prevPosition.y.toString()
+            )*/
 
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    Log.i("INFO", "action down")
                     motionEvent = MotionEvents.Down
-                    true
+                    //prevPosition = CanvasCoord(event.x, event.y)
                 }
 
                 MotionEvent.ACTION_MOVE -> {
+                    Log.i("INFO", "action move")
                     motionEvent = MotionEvents.Move
-                    true
                 }
 
                 MotionEvent.ACTION_UP -> {
+                    Log.i("INFO", "action up")
                     motionEvent = MotionEvents.Up
-                    true
                 }
-
-                else -> false
             }
+
+            true
         }
 
     Canvas(modifier = drawModifier) {

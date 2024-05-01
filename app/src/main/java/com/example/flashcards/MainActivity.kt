@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -285,29 +288,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearchTextVal: String) -> Unit) {
-
-    fun doInkRecognition(model: DigitalInkRecognitionModel, inkData: Ink){
-        //showSnackbar(R.string.processing_msg)
-
-        val recognizer: DigitalInkRecognizer = DigitalInkRecognition.getClient(
-            DigitalInkRecognizerOptions.builder(model).build()
-        )
-
-        recognizer.recognize(inkData)
-            .addOnSuccessListener { result: RecognitionResult ->
-                val res = result.candidates[0].text
-                //Log.i("INFO", res)
-                onSubmitRequest(res)
-                onDismissRequest()
-            }
-            .addOnFailureListener { e: Exception ->
-                //showSnackbar(R.string.failure_msg_recognition)
-                Log.e("ERROR", "Error during recognition: $e")
-                onDismissRequest()
-            }
-    }
-
+fun DrawingCanvasDialog(
+    onDismissRequest: () -> Unit,
+    onSubmitRequest: (newSearchTextVal: String) -> Unit
+) {
     Dialog(onDismissRequest = { onDismissRequest() }) {
         Card(
             modifier = Modifier
@@ -316,8 +300,50 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearc
                 .padding(14.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
+            var isProcessing by remember{ mutableStateOf(false) }
             var inkBuilder by remember { mutableStateOf(Ink.Builder()) }
             val path = remember { Path() }
+
+            fun doInkRecognition(model: DigitalInkRecognitionModel, inkData: Ink){
+                val recognizer: DigitalInkRecognizer = DigitalInkRecognition.getClient(
+                    DigitalInkRecognizerOptions.builder(model).build()
+                )
+
+                recognizer.recognize(inkData)
+                    .addOnSuccessListener { result: RecognitionResult ->
+                        val res = result.candidates[0].text
+                        //Log.i("INFO", res)
+                        onSubmitRequest(res)
+                        isProcessing = false
+                        onDismissRequest()
+                    }
+                    .addOnFailureListener { e: Exception ->
+                        Log.e("ERROR", "Error during recognition: $e")
+                        isProcessing = false
+                        onDismissRequest()
+                    }
+            }
+
+            if (isProcessing) {
+                // https://stackoverflow.com/questions/75260214/how-to-show-semi-transparent-loading-overlay-above-full-composable
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color.Gray.copy(alpha = 0.6f))
+                ){
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ){
+                        CircularProgressIndicator(
+                            modifier = Modifier.width(64.dp),
+                            color = MaterialTheme.colorScheme.secondary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        )
+                    }
+                }
+            }
 
             DrawingCanvas(inkBuilder, path)
 
@@ -328,6 +354,8 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearc
                     .padding(8.dp)
             ) {
                 Button(onClick = {
+                    isProcessing = true
+
                     val inkData = inkBuilder.build()
 
                     var modelIdentifier: DigitalInkRecognitionModelIdentifier? = null
@@ -339,37 +367,34 @@ fun DrawingCanvasDialog(onDismissRequest: () -> Unit, onSubmitRequest: (newSearc
                             val model = DigitalInkRecognitionModel.builder(modelIdentifier).build()
                             val remoteModelManager = RemoteModelManager.getInstance()
 
-                            //showSnackbar(R.string.check_download_language_msg)
-
                             remoteModelManager.isModelDownloaded(model).addOnSuccessListener { bool ->
                                 when (bool) {
                                     true -> {
-                                        //showSnackbar(R.string.downloaded_language_msg)
                                         doInkRecognition(model, inkData)
                                     }
                                     false -> {
                                         // download it
-                                        //showSnackbar(R.string.download_language_msg)
                                         Log.i("INFO", "NEED TO DOWNLOAD MODEL")
 
                                         remoteModelManager.download(model, DownloadConditions.Builder().build())
                                             .addOnSuccessListener {
                                                 Log.i("INFO", "Model downloaded")
-                                                //showSnackbar(R.string.downloaded_language_msg)
                                                 doInkRecognition(model, inkData)
                                             }
                                             .addOnFailureListener { e: Exception ->
-                                                //showSnackbar(R.string.failure_msg_download)
                                                 Log.e("ERROR", "Error while downloading a model: $e")
+                                                isProcessing = false
                                             }
                                     }
                                 }
                             }
                         }else{
                             // no model was found, handle error.
+                            isProcessing = false
                         }
                     } catch (e: MlKitException) {
                         // language tag failed to parse, handle error.
+                        isProcessing = false
                     }
                 }) {
                     Text(text = "submit")
