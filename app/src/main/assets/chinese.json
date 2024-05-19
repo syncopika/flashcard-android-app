@@ -1019,5 +1019,21 @@
     {"value": "結構", "pinyin": "jie2 gou4", "definition": "structure; construction; organization"},
     {"value": "街頭巷尾", "pinyin": "jie1 tou2 xiang4 wei3", "definition": "streets and lanes; throughout the city"},
     {"value": "相同", "pinyin": "xiang1 tong2", "definition": "identical; same"},
-    {"value": "擁有", "pinyin": "yong1 you3", "definition": "to possess; to own; to acquire"}
+    {"value": "擁有", "pinyin": "yong1 you3", "definition": "to possess; to own; to acquire"},
+    {"value": "去年", "pinyin": "qu4 nian2", "definition": "last year"},
+    {"value": "明年", "pinyin": "ming2 nian2", "definition": "next year"},
+    {"value": "優格", "pinyin": "you1 ge2", "definition": "yogurt (chiefly Taiwan)"},
+    {"value": "嚴選", "pinyin": "yan2 xuan3", "definition": "to carefully select"},
+    {"value": "添加", "pinyin": "tian1 jia1", "definition": "to add; to augment; to increase"},
+    {"value": "斤", "pinyin": "yan2 xuan3", "definition": "catty; a unit of weight (~600g)"},
+    {"value": "地址", "pinyin": "di4 zhi3", "definition": "address; location"},
+    {"value": "攪拌", "pinyin": "jiao3 ban4", "definition": "to stir; to mix; to churn"},
+    {"value": "牙膏", "pinyin": "ya2 gao1", "definition": "toothpaste"},
+    {"value": "牙刷", "pinyin": "ya2 shua1", "definition": "toothbrush"},
+    {"value": "醇", "pinyin": "chun2", "definition": "(organic chemistry) alcohol"},
+    {"value": "拖鞋", "pinyin": "tuo1 xie2", "definition": "slippers"},
+    {"value": "露", "pinyin": "lu4", "definition": "dew; syrup; nectar"},
+    {"value": "悅", "pinyin": "yue4", "definition": "pleased; contented; gratified; to be pleasing to"},
+    {"value": "純", "pinyin": "chun2", "definition": "pure; unmixed; genuine"},
+    {"value": "不幸", "pinyin": "bu4 xing4", "definition": "unfortunate; sad"}
 ]
