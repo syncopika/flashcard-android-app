@@ -1169,12 +1169,18 @@
     {"value": "敏感", "pinyin": "min3 gan3", "definition": "sensitive; susceptible; allergic"},
     {"value": "經濟", "pinyin": "jing1 ji4", "definition": "economy"},
     {"value": "西元", "pinyin": "xi1 yuan2", "definition": "common era (CE)"},
-    {"value": "優等", "pinyin": "you1 deng3", "definition": "of the hgihest order; excellent; superior; high-class"},
+    {"value": "優等", "pinyin": "you1 deng3", "definition": "of the highest order; excellent; superior; high-class"},
     {"value": "仙境", "pinyin": "xian1 jing4", "definition": "fairyland; wonderland; paradise"},
     {"value": "品質", "pinyin": "pin3 zhi4", "definition": "(of a person) character; (of a product) quality"},
     {"value": "接地氣", "pinyin": "jie1 di4 qi4", "definition": "(neologism, colloquial) down-to-earth; relatable; close to the people"},
     {"value": "參考", "pinyin": "can1 kao3", "definition": "to reference; to consult; to refer to"},
     {"value": "採用", "pinyin": "cai3 yong4", "definition": "to adopt; to use; to employ"},
     {"value": "洽詢", "pinyin": "qia4 xun2", "definition": "to inquire; to consult"},
-    {"value": "規範", "pinyin": "gui1 fan4", "definition": "standard; norm; regulation"}
+    {"value": "規範", "pinyin": "gui1 fan4", "definition": "standard; norm; regulation"},
+    {"value": "可憐", "pinyin": "ke3 lian2", "definition": "pitiful; pitiable; to pity"},
+    {"value": "匆匆", "pinyin": "cong1 cong1", "definition": "hasty; hurried; in a hurry; in a rush"},
+    {"value": "浮", "pinyin": "fu2", "definition": "to float; to swim; superficial; temporary; movable"},
+    {"value": "防腐劑", "pinyin": "fang2 fu3 ji4", "definition": "preservative; antiseptic; anticorrosive"},
+    {"value": "稅", "pinyin": "shui4", "definition": "tax; revenue"},
+    {"value": "旁人", "pinyin": "pang2 ren2", "definition": "other people; bystanders; outsiders"}
 ]
