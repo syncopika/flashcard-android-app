@@ -45,6 +45,9 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.material3.rememberDrawerState
@@ -111,6 +114,12 @@ fun filterCards(cards: Array<ChineseJSONObject>, searchType: String, searchText:
             it.definition.contains(searchText) || it.pinyin.contains(searchText)
         } else if (searchType == "pinyin") {
             it.pinyin.contains(searchText)
+        } else if(searchType == "tag") {
+            if (it.tags != null) {
+                it.tags.contains(searchText)
+            } else {
+                false
+            }
         } else {
             true
         }
@@ -138,15 +147,17 @@ class MainActivity : ComponentActivity() {
 
                 val scope = rememberCoroutineScope()
 
-                var searchText by remember{ mutableStateOf("") }
-                val searchOptions = listOf("front", "back", "pinyin")
-                val (selectedOption, onOptionSelected) = remember{ mutableStateOf(searchOptions[0]) }
+                var searchText by remember { mutableStateOf("") }
+                val searchOptions = listOf("front", "back", "pinyin", "tag")
+                val (selectedOption, onOptionSelected) = remember { mutableStateOf(searchOptions[0]) }
 
                 // when the list of filtered cards changes, the view should be updated accordingly
-                var filteredCards by remember{ mutableStateOf(json.copyOf()) }
+                var filteredCards by remember { mutableStateOf(json.copyOf()) }
                 var currIndex by remember { mutableStateOf(0) }
 
-                var showDrawingCanvas by remember{ mutableStateOf(false) }
+                var showDrawingCanvas by remember { mutableStateOf(false) }
+
+                val snackbarHostState = remember { SnackbarHostState() }
 
                 // pencil icon composable to add to the search bar to provide
                 // an option of writing a character to search for
@@ -231,6 +242,9 @@ class MainActivity : ComponentActivity() {
                                 Button(onClick = {
                                     filteredCards.shuffle()
                                     currIndex = Random.nextInt(0, filteredCards.size)
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("shuffled!", null, false, SnackbarDuration.Short)
+                                    }
                                 }) {
                                     Text("shuffle")
                                 }
@@ -238,6 +252,7 @@ class MainActivity : ComponentActivity() {
                         },
                     ) {
                         Scaffold(
+                            snackbarHost = { SnackbarHost(snackbarHostState) },
                             topBar = {
                                 TopAppBar(
                                     colors = topAppBarColors(
@@ -300,7 +315,7 @@ fun DrawingCanvasDialog(
                 .padding(14.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
-            var isProcessing by remember{ mutableStateOf(false) }
+            var isProcessing by remember { mutableStateOf(false) }
             var inkBuilder by remember { mutableStateOf(Ink.Builder()) }
             val path = remember { Path() }
 

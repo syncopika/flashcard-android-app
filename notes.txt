@@ -28,7 +28,8 @@ https://stackoverflow.com/questions/71882353/show-trailing-icon-after-text-input
 https://stackoverflow.com/questions/71090111/how-to-draw-on-jetpack-compose-canvas-using-touch-events
 https://stackoverflow.com/questions/67185495/draw-two-buttons-in-a-row-using-jetpack-compose
 https://stackoverflow.com/questions/58743541/how-to-get-context-in-jetpack-compose
+https://stackoverflow.com/questions/68909340/how-to-show-snackbar-with-a-button-onclick-in-jetpack-compose
 
 TODO:
-- be able to search by tags if any
 - guessing game mode?
+- still need to fix drawing on the canvas
