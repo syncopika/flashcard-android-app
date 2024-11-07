@@ -51,7 +51,6 @@ fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
     var currPosition by remember { mutableStateOf<CanvasCoord>(CanvasCoord(0f, 0f)) }
     var prevPosition by remember { mutableStateOf<CanvasCoord>(CanvasCoord(0f, 0f)) }
     val touchTolerance = ViewConfiguration.get(LocalContext.current).scaledTouchSlop
-    //Log.i("INFO", "touch tolerance: $touchTolerance")
 
     var strokeBuilder = Ink.Stroke.builder()
     var currTime = 0L
@@ -67,11 +66,12 @@ fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
     }
 
     fun touchMove() {
-        Log.i("INFO", "drawing...")
         val dx = abs(currPosition.x - prevPosition.x)
         val dy = abs(currPosition.y - prevPosition.y)
 
         if (dx >= touchTolerance || dy >= touchTolerance) {
+            //Log.i("INFO", "drawing...")
+
             path.quadraticBezierTo(
                 prevPosition.x,
                 prevPosition.y,
@@ -103,23 +103,21 @@ fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
         .background(Color.White)
         .pointerInteropFilter { event ->
             currTime = System.currentTimeMillis()
-            currPosition = CanvasCoord(event.x, event.y)
-
-            /*
-            Log.i(
-                "INFO",
-                "curr pos: " + currPosition.x.toString() + ", " + currPosition.y.toString() + ", prev pos: " + prevPosition.x.toString() + ", " + prevPosition.y.toString()
-            )*/
 
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     Log.i("INFO", "action down")
-                    motionEvent = MotionEvents.Down
-                    //prevPosition = CanvasCoord(event.x, event.y)
+                    currPosition = CanvasCoord(event.x, event.y)
+                    // handle touchStart here immediately because sometimes
+                    // we get here and motionEvent is set to MotionEvents.Down
+                    // but somehow the case/switch for motionEvent in Canvas() will appear to skip
+                    // the case for MotionEvents.Down and touchStart() would not be called,
+                    // resulting in an annoying connected line with the last-drawn segment
+                    touchStart()
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    Log.i("INFO", "action move")
+                    currPosition = CanvasCoord(event.x, event.y)
                     motionEvent = MotionEvents.Move
                 }
 
@@ -134,7 +132,8 @@ fun DrawingCanvas(inkBuilder: Ink.Builder, path: Path) {
 
     Canvas(modifier = drawModifier) {
         when (motionEvent) {
-            MotionEvents.Down -> touchStart()
+            // don't need to handle MotionEvents.Down here
+            // because we handle the down event immediately in pointerInteropFilter
             MotionEvents.Move -> touchMove()
             MotionEvents.Up -> touchUp()
             else -> Unit
