@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -37,6 +38,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,6 +56,7 @@ import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -93,6 +97,13 @@ data class ChineseJSONObject(
     @SerializedName("tags") val tags: List<String>
 )
 
+// {"value": "翻訳", "romaji": "honyaku (ほんやく)", "definition": "translate"},
+data class JapaneseJSONObject(
+    @SerializedName("value") val value: String,
+    @SerializedName("romaji") val romaji: String,
+    @SerializedName("definition") val definition: String
+)
+
 // https://stackoverflow.com/questions/41790357/close-hide-the-android-soft-keyboard-with-kotlin
 fun Activity.hideKeyboard() {
     hideKeyboard(currentFocus ?: View(this))
@@ -103,23 +114,39 @@ fun Context.hideKeyboard(view: View) {
     inputMethodManager.hideSoftInputFromWindow(view.windowToken, 0)
 }
 
-fun filterCards(cards: Array<ChineseJSONObject>, searchType: String, searchText: String): Array<ChineseJSONObject> {
-    return cards.filter {
+fun filterCardsChinese(cards: Array<Any>, searchType: String, searchText: String): Array<Any> {
+    return cards.filter {it ->
         //Log.i("INFO", searchText)
         if (searchText.trim() == "") {
             true
         } else if (searchType == "front") {
-            it.value.contains(searchText)
+            (it as ChineseJSONObject).value.contains(searchText)
         } else if (searchType == "back") {
-            it.definition.contains(searchText) || it.pinyin.contains(searchText)
+            (it as ChineseJSONObject).definition.contains(searchText) || (it as ChineseJSONObject).pinyin.contains(searchText)
         } else if (searchType == "pinyin") {
-            it.pinyin.contains(searchText)
+            (it as ChineseJSONObject).pinyin.contains(searchText)
         } else if(searchType == "tag") {
-            if (it.tags != null) {
-                it.tags.contains(searchText)
+            if ((it as ChineseJSONObject).tags != null) {
+                (it as ChineseJSONObject).tags.contains(searchText)
             } else {
                 false
             }
+        } else {
+            true
+        }
+    }.toTypedArray()
+}
+
+fun filterCardsJapanese(cards: Array<Any>, searchType: String, searchText: String): Array<Any> {
+    return cards.filter {
+        if (searchText.trim() == "") {
+            true
+        } else if (searchType == "front") {
+            (it as JapaneseJSONObject).value.contains(searchText)
+        } else if (searchType == "back") {
+            (it as JapaneseJSONObject).definition.contains(searchText) || (it as JapaneseJSONObject).romaji.contains(searchText)
+        } else if (searchType == "romaji") {
+            (it as JapaneseJSONObject).romaji.contains(searchText)
         } else {
             true
         }
@@ -131,9 +158,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val data: String = assets.open("chinese.json").bufferedReader().use { it.readText() }
+        val chineseData: String = assets.open("chinese.json").bufferedReader().use { it.readText() }
+        val japaneseData: String = assets.open("japanese.json").bufferedReader().use { it.readText() }
+
         val gson = Gson()
-        val json = gson.fromJson(data, Array<ChineseJSONObject>::class.java)
+
+        val chineseJson = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
+        val japaneseJson = gson.fromJson(japaneseData, Array<JapaneseJSONObject>::class.java) as Array<Any>
 
         //Log.i("INFO", json[0].value)
         //Log.i("INFO", data)
@@ -148,30 +179,39 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
 
                 var searchText by remember { mutableStateOf("") }
-                val searchOptions = listOf("front", "back", "pinyin", "tag")
-                val (selectedOption, onOptionSelected) = remember { mutableStateOf(searchOptions[0]) }
+                var searchOptions = remember { mutableStateOf(listOf("front", "back", "pinyin", "tag")) }
+                val (selectedOption, onOptionSelected) = remember { mutableStateOf(searchOptions.value[0]) }
 
                 // when the list of filtered cards changes, the view should be updated accordingly
-                var filteredCards by remember { mutableStateOf(json.copyOf()) }
+                var filteredCards by remember { mutableStateOf<Array<Any>>(chineseJson.copyOf() as Array<Any>) }
                 var currIndex by remember { mutableStateOf(0) }
 
                 var showDrawingCanvas by remember { mutableStateOf(false) }
 
                 val snackbarHostState = remember { SnackbarHostState() }
 
+                var languageSelectionDropdownExpanded by remember { mutableStateOf(false) }
+                var currFlashcardLanguage by remember { mutableStateOf<String>("chinese") }
+
                 // pencil icon composable to add to the search bar to provide
                 // an option of writing a character to search for
-                val trailingIconView = @Composable {
-                    IconButton(
-                        onClick = {
-                            //Log.i("INFO", "opening canvas")
-                            showDrawingCanvas = true
-                        },
-                    ) {
-                        Icon(
-                            Icons.Default.Create,
-                            contentDescription = ""
-                        )
+                var trailingIconView = @Composable{}
+
+                // currently only providing drawing support for lookup for chinese
+                // TODO: have it work for japanese as well?
+                if (currFlashcardLanguage == "chinese") {
+                    trailingIconView = @Composable {
+                        IconButton(
+                            onClick = {
+                                //Log.i("INFO", "opening canvas")
+                                showDrawingCanvas = true
+                            },
+                        ) {
+                            Icon(
+                                Icons.Default.Create,
+                                contentDescription = ""
+                            )
+                        }
                     }
                 }
 
@@ -180,8 +220,7 @@ class MainActivity : ComponentActivity() {
                         { showDrawingCanvas = false },
                         { searchTextVal: String ->
                             searchText = searchTextVal
-                            filteredCards =
-                                filterCards(json, selectedOption, searchText)
+                            filteredCards = filterCardsChinese(chineseJson, selectedOption, searchText)
                             currIndex = 0
                         }
                     )
@@ -195,8 +234,11 @@ class MainActivity : ComponentActivity() {
                                     onValueChange = {
                                         searchText = it
 
-                                        filteredCards =
-                                            filterCards(json, selectedOption, searchText)
+                                        if (currFlashcardLanguage == "chinese") {
+                                            filteredCards = filterCardsChinese(chineseJson, selectedOption, searchText)
+                                        } else {
+                                            filteredCards = filterCardsJapanese(japaneseJson, selectedOption, searchText)
+                                        }
 
                                         //Log.i("INFO", "filtered cards size: " + filteredCards.size)
                                         // always reset curr index to 0 when we get a new filtered list
@@ -208,7 +250,7 @@ class MainActivity : ComponentActivity() {
 
                                 // Note that Modifier.selectableGroup() is essential to ensure correct accessibility behavior
                                 Column(Modifier.selectableGroup()) {
-                                    searchOptions.forEach { text ->
+                                    searchOptions.value.forEach { text ->
                                         Row(
                                             Modifier
                                                 .fillMaxWidth()
@@ -217,8 +259,13 @@ class MainActivity : ComponentActivity() {
                                                     selected = (text == selectedOption),
                                                     onClick = {
                                                         onOptionSelected(text)
-                                                        filteredCards =
-                                                            filterCards(json, text, searchText)
+
+                                                        if (currFlashcardLanguage == "chinese") {
+                                                            filteredCards = filterCardsChinese(chineseJson, text, searchText)
+                                                        } else {
+                                                            filteredCards = filterCardsJapanese(japaneseJson, text, searchText)
+                                                        }
+
                                                         currIndex = 0
                                                     },
                                                     role = Role.RadioButton
@@ -283,11 +330,46 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             })
                                         )
+                                    },
+                                    actions = {
+                                        // show dropdown for flashcard language selection
+                                        Box(
+                                            modifier = Modifier
+                                                .padding(16.dp)
+                                        ) {
+                                            IconButton(onClick = { languageSelectionDropdownExpanded = !languageSelectionDropdownExpanded }) {
+                                                Icon(Icons.Default.MoreVert, contentDescription = "flashcard language options")
+                                            }
+                                            DropdownMenu(
+                                                expanded = languageSelectionDropdownExpanded,
+                                                onDismissRequest = { languageSelectionDropdownExpanded = false }
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = { Text("chinese") },
+                                                    onClick = {
+                                                        currFlashcardLanguage = "chinese"
+                                                        filteredCards = chineseJson.copyOf()
+                                                        currIndex = 0
+                                                        searchOptions.value = listOf("front", "back", "pinyin", "tag")
+                                                    }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text("japanese") },
+                                                    onClick = {
+                                                        currFlashcardLanguage = "japanese"
+                                                        filteredCards = japaneseJson.copyOf()
+                                                        currIndex = 0
+                                                        searchOptions.value = listOf("front", "back", "romaji")
+                                                    }
+                                                )
+                                            }
+                                        }
                                     }
                                 )
                             },
                             content = { innerPadding ->
                                 MainContent(
+                                    { currFlashcardLanguage },
                                     { currIndex },
                                     { idx -> currIndex = idx },
                                     filteredCards,
@@ -431,13 +513,15 @@ fun DrawingCanvasDialog(
 
 @Composable
 fun MainContent(
+    getCurrFlashcardLanguage: () -> String,
     getCurrIndex: () -> Int,
     setCurrIndex: (index: Int) -> Unit,
-    cards: Array<ChineseJSONObject>,
+    cards: Array<Any>,
     innerPadding: PaddingValues)
 {
     var offsetX by remember { mutableStateOf(0f) }
     var currIndex = getCurrIndex()
+    var currLang = getCurrFlashcardLanguage()
 
     // A surface container using the 'background' color from the theme
     Surface(
@@ -474,14 +558,14 @@ fun MainContent(
         color = MaterialTheme.colorScheme.background
     ) {
         if (cards.isNotEmpty()) {
-            ChineseFlashcard(currIndex, cards)
+            Flashcard(currIndex, currLang, cards)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChineseFlashcard(currIndex: Int, jsonData: Array<ChineseJSONObject>) {
+fun Flashcard(currIndex: Int, language: String, jsonData: Array<Any>) {
     var rotated by remember { mutableStateOf(false) }
 
     val rotation by animateFloatAsState(
@@ -509,10 +593,22 @@ fun ChineseFlashcard(currIndex: Int, jsonData: Array<ChineseJSONObject>) {
             ) {
                 if (rotated) {
                     // back
-                    val pinyin = jsonData[currIndex].pinyin
-                    val definition = jsonData[currIndex].definition
+                    var backText = ""
+
+                    if (language == "chinese") {
+                        var card = jsonData[currIndex] as ChineseJSONObject
+                        val pinyin = card.pinyin
+                        val definition = card.definition
+                        backText = "pinyin: $pinyin\n\ndefinition: $definition"
+                    } else {
+                        var card = jsonData[currIndex] as JapaneseJSONObject
+                        val romaji = card.romaji
+                        val definition = card.definition
+                        backText = "romaji: $romaji\n\ndefinition: $definition"
+                    }
+
                     Text(
-                        text = "pinyin: $pinyin\n\ndefinition: $definition",
+                        text = backText,
                         modifier = Modifier
                             .graphicsLayer {
                                 rotationY = rotation
@@ -523,7 +619,16 @@ fun ChineseFlashcard(currIndex: Int, jsonData: Array<ChineseJSONObject>) {
                     )
                 } else {
                     // front
-                    val word = jsonData[currIndex].value
+                    var word = ""
+
+                    if (language == "chinese") {
+                        var card = jsonData[currIndex] as ChineseJSONObject
+                        word = card.value
+                    } else {
+                        var card = jsonData[currIndex] as JapaneseJSONObject
+                        word = card.value
+                    }
+
                     Text(
                         text = "$word",
                         modifier = Modifier
