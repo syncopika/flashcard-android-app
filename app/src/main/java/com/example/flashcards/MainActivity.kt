@@ -145,6 +145,8 @@ fun filterCardsJapanese(cards: Array<Any>, searchType: String, searchText: Strin
             (it as JapaneseJSONObject).value.contains(searchText)
         } else if (searchType == "back") {
             (it as JapaneseJSONObject).definition.contains(searchText) || (it as JapaneseJSONObject).romaji.contains(searchText)
+        } else if (searchType == "romaji") {
+            (it as JapaneseJSONObject).romaji.contains(searchText)
         } else {
             true
         }
