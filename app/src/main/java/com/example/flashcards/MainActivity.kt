@@ -115,7 +115,7 @@ fun Context.hideKeyboard(view: View) {
 }
 
 fun filterCardsChinese(cards: Array<Any>, searchType: String, searchText: String): Array<Any> {
-    return cards.filter {
+    return cards.filter {it ->
         //Log.i("INFO", searchText)
         if (searchText.trim() == "") {
             true
@@ -134,7 +134,7 @@ fun filterCardsChinese(cards: Array<Any>, searchType: String, searchText: String
         } else {
             true
         }
-    } as Array<Any>//.toTypedArray()
+    }.toTypedArray()
 }
 
 fun filterCardsJapanese(cards: Array<Any>, searchType: String, searchText: String): Array<Any> {
@@ -148,7 +148,7 @@ fun filterCardsJapanese(cards: Array<Any>, searchType: String, searchText: Strin
         } else {
             true
         }
-    } as Array<Any>//.toTypedArray()
+    }.toTypedArray()
 }
 
 class MainActivity : ComponentActivity() {
@@ -177,10 +177,7 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
 
                 var searchText by remember { mutableStateOf("") }
-
-                // TODO: this should change based on flashcard language
                 var searchOptions = remember { mutableStateOf(listOf("front", "back", "pinyin", "tag")) }
-
                 val (selectedOption, onOptionSelected) = remember { mutableStateOf(searchOptions.value[0]) }
 
                 // when the list of filtered cards changes, the view should be updated accordingly
@@ -198,6 +195,8 @@ class MainActivity : ComponentActivity() {
                 // an option of writing a character to search for
                 var trailingIconView = @Composable{}
 
+                // currently only providing drawing support for lookup for chinese
+                // TODO: have it work for japanese as well?
                 if (currFlashcardLanguage == "chinese") {
                     trailingIconView = @Composable {
                         IconButton(
@@ -557,18 +556,14 @@ fun MainContent(
         color = MaterialTheme.colorScheme.background
     ) {
         if (cards.isNotEmpty()) {
-            if (currLang == "chinese") {
-                ChineseFlashcard(currIndex, cards as Array<ChineseJSONObject>)
-            } else {
-                JapaneseFlashcard(currIndex, cards as Array<JapaneseJSONObject>)
-            }
+            Flashcard(currIndex, currLang, cards)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChineseFlashcard(currIndex: Int, jsonData: Array<ChineseJSONObject>) {
+fun Flashcard(currIndex: Int, language: String, jsonData: Array<Any>) {
     var rotated by remember { mutableStateOf(false) }
 
     val rotation by animateFloatAsState(
@@ -596,10 +591,22 @@ fun ChineseFlashcard(currIndex: Int, jsonData: Array<ChineseJSONObject>) {
             ) {
                 if (rotated) {
                     // back
-                    val pinyin = jsonData[currIndex].pinyin
-                    val definition = jsonData[currIndex].definition
+                    var backText = ""
+
+                    if (language == "chinese") {
+                        var card = jsonData[currIndex] as ChineseJSONObject
+                        val pinyin = card.pinyin
+                        val definition = card.definition
+                        backText = "pinyin: $pinyin\n\ndefinition: $definition"
+                    } else {
+                        var card = jsonData[currIndex] as JapaneseJSONObject
+                        val romaji = card.romaji
+                        val definition = card.definition
+                        backText = "romaji: $romaji\n\ndefinition: $definition"
+                    }
+
                     Text(
-                        text = "pinyin: $pinyin\n\ndefinition: $definition",
+                        text = backText,
                         modifier = Modifier
                             .graphicsLayer {
                                 rotationY = rotation
@@ -610,76 +617,16 @@ fun ChineseFlashcard(currIndex: Int, jsonData: Array<ChineseJSONObject>) {
                     )
                 } else {
                     // front
-                    val word = jsonData[currIndex].value
-                    Text(
-                        text = "$word",
-                        modifier = Modifier
-                            .graphicsLayer {
-                                rotationY = rotation
-                            }
-                            .align(Alignment.CenterHorizontally),
-                        fontSize = 10.em,
-                        color = Color.Black
-                    )
-                }
-            }
-        }
-        // show card number at bottom-right of screen
-        Text(
-            text = "${currIndex+1}/${jsonData.size}",
-            modifier = Modifier
-                .align(Alignment.BottomEnd),
-            color = Color.White
-        )
-    }
-}
+                    var word = ""
 
+                    if (language == "chinese") {
+                        var card = jsonData[currIndex] as ChineseJSONObject
+                        word = card.value
+                    } else {
+                        var card = jsonData[currIndex] as JapaneseJSONObject
+                        word = card.value
+                    }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun JapaneseFlashcard(currIndex: Int, jsonData: Array<JapaneseJSONObject>) {
-    var rotated by remember { mutableStateOf(false) }
-
-    val rotation by animateFloatAsState(
-        targetValue = if (rotated) 180f else 0f,
-        animationSpec = tween(500),
-        label = "cardRotation"
-    )
-
-    Box {
-        Card(
-            onClick = { rotated = !rotated },
-            modifier = Modifier
-                .fillMaxSize(0.7f)
-                .align(Alignment.Center)
-                .graphicsLayer {
-                    rotationY = rotation
-                    cameraDistance = 8 * density
-                },
-            colors = CardDefaults.cardColors(Color.White)
-        ) {
-            Column(
-                Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                if (rotated) {
-                    // back
-                    val pinyin = jsonData[currIndex].romaji
-                    val definition = jsonData[currIndex].definition
-                    Text(
-                        text = "pinyin: $pinyin\n\ndefinition: $definition",
-                        modifier = Modifier
-                            .graphicsLayer {
-                                rotationY = rotation
-                            }
-                            .align(Alignment.CenterHorizontally)
-                            .padding(18.dp),
-                        color = Color.Black
-                    )
-                } else {
-                    // front
-                    val word = jsonData[currIndex].value
                     Text(
                         text = "$word",
                         modifier = Modifier
