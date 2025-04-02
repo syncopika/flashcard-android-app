@@ -1609,5 +1609,15 @@
     {"value": "弘揚", "pinyin": "hong2 yang2", "definition": "to promote; to enhance; to enrich"},
     {"value": "總監", "pinyin": "zong1 jian1", "definition": "head of department; director; chief"},
     {"value": "劇院", "pinyin": "ju4 yuan4", "definition": "theater; center for performing arts"},
-    {"value": "爆滿", "pinyin": "bao4 man3", "definition": "to be filled to capacity; to be packed"}
+    {"value": "爆滿", "pinyin": "bao4 man3", "definition": "to be filled to capacity; to be packed"},
+    {"value": "得來速", "pinyin": "de2 lai2 su4", "definition": "drive-through (restaurant)"},
+    {"value": "聽不見", "pinyin": "ting1 bu4 jian4", "definition": "not to be able to hear; can't hear; inaudible"},
+    {"value": "隔空", "pinyin": "ge2 kong1", "definition": "from a distance; remotely"},
+    {"value": "操作", "pinyin": "cao1 zuo4", "definition": "to operate; to maneuver; to manipulate; to do physical work; to implement; to carry out"},
+    {"value": "陶瓷", "pinyin": "tao2 ci2", "definition": "ceramic"},
+    {"value": "精簡", "pinyin": "jing1 jian3", "definition": "concise; to simplify"},
+    {"value": "設備", "pinyin": "she4 bei4", "definition": "equipment; facilities"},
+    {"value": "麵筋", "pinyin": "mian4 jin1", "definition": "wheat gluten", "tags": ["food"]},
+    {"value": "落下", "pinyin": "luo4 xia4", "definition": "to fall down; to drop"},
+    {"value": "孝", "pinyin": "xiao4", "definition": "filial piety; filial duty"}
 ]

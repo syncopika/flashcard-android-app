@@ -364,5 +364,11 @@
   {"value": "太", "romaji": "futo (ふと)", "definition": "fatness"},
   {"value": "小", "romaji": "shou (しょう)", "definition": "small"},
   {"value": "並", "romaji": "nami (なみ)", "definition": "medium; average; common"},
-  {"value": "応援", "romaji": "ouen (おうえん)", "definition": "support; to cheer for"}
+  {"value": "応援", "romaji": "ouen (おうえん)", "definition": "support; to cheer for"},
+  {"value": "引っ掛かる", "romaji": "hikkakaru (ひっかかる)", "definition": "to snag onto; to catch onto; (figuratively) to fall for; to be tricked"},
+  {"value": "伝統的", "romaji": "dentouteki (でんとうてき)", "definition": "traditional; convential"},
+  {"value": "治す", "romaji": "naosu (なおす)", "definition": "to cure; to heal"},
+  {"value": "直す", "romaji": "naosu (なおす)", "definition": "to fix; to repair; to change; to alter"},
+  {"value": "類似点", "romaji": "ruijiten (るいじてん)", "definition": "point in common; common feature"},
+  {"value": "解決", "romaji": "kaiketsu (かいけつ)", "definition": "resolution; settlement"}
 ]
