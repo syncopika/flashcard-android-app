@@ -370,5 +370,11 @@
   {"value": "治す", "romaji": "naosu (なおす)", "definition": "to cure; to heal"},
   {"value": "直す", "romaji": "naosu (なおす)", "definition": "to fix; to repair; to change; to alter"},
   {"value": "類似点", "romaji": "ruijiten (るいじてん)", "definition": "point in common; common feature"},
-  {"value": "解決", "romaji": "kaiketsu (かいけつ)", "definition": "resolution; settlement"}
+  {"value": "解決", "romaji": "kaiketsu (かいけつ)", "definition": "resolution; settlement"},
+  {"value": "両替", "romaji": "ryougae (りょうがえ)", "definition": "to exchange currency"},
+  {"value": "評価", "romaji": "hyouka (ひょうか)", "definition": "appraisal; evaluation"},
+  {"value": "素泊まり", "romaji": "sudomari (すどまり)", "definition": "a lodging or accommodation arrangement that only includes the stay and not any meals"},
+  {"value": "接客", "romaji": "sekkyaku (せっきゃく)", "definition": "serving customers"},
+  {"value": "台所", "romaji": "daidokoro (だいどころ)", "definition": "kitchen"},
+  {"value": "見栄え", "romaji": "mibae (みばえ)", "definition": "good outward appearance; looking nice"}
 ]
