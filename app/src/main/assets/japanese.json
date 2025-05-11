@@ -376,5 +376,12 @@
   {"value": "素泊まり", "romaji": "sudomari (すどまり)", "definition": "a lodging or accommodation arrangement that only includes the stay and not any meals"},
   {"value": "接客", "romaji": "sekkyaku (せっきゃく)", "definition": "serving customers"},
   {"value": "台所", "romaji": "daidokoro (だいどころ)", "definition": "kitchen"},
-  {"value": "見栄え", "romaji": "mibae (みばえ)", "definition": "good outward appearance; looking nice"}
+  {"value": "見栄え", "romaji": "mibae (みばえ)", "definition": "good outward appearance; looking nice"},
+  {"value": "無敵", "romaji": "muteki (むてき)", "definition": "invincible"},
+  {"value": "価格", "romaji": "kakaku (かかく)", "definition": "price"},
+  {"value": "目安", "romaji": "meyasu (めやす)", "definition": "reference; criterion; standard; rough indication"},
+  {"value": "手頃", "romaji": "tegoro (てごろ)", "definition": "handy; convenient; reasonable"},
+  {"value": "絶交", "romaji": "zekkou (ぜっこう)", "definition": "breakup; breaking off one's relationship"},
+  {"value": "取り除く", "romaji": "torinozoku (とりのぞく)", "definition": "to remove; prune away; take away"},
+  {"value": "効く", "romaji": "kiku (きく)", "definition": "to be effective; act upon; to work; to have; to be able to be applied"}
 ]
