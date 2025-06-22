@@ -2,6 +2,8 @@ package com.example.flashcards
 
 import android.app.Activity
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -68,10 +70,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.lifecycleScope
 import com.example.flashcards.ui.theme.DrawingCanvas
 import com.example.flashcards.ui.theme.FlashcardsTheme
 import com.google.gson.Gson
@@ -86,7 +90,11 @@ import com.google.mlkit.vision.digitalink.DigitalInkRecognizer
 import com.google.mlkit.vision.digitalink.DigitalInkRecognizerOptions
 import com.google.mlkit.vision.digitalink.Ink
 import com.google.mlkit.vision.digitalink.RecognitionResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.net.URL
 import kotlin.random.Random
 
 // {"value": "搖頭晃腦", "pinyin": "yao2 tou2 huang4 nao3", "definition": "to look pleased with one's self", "tags": ["idiom"]},
@@ -158,16 +166,54 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val chineseData: String = assets.open("chinese.json").bufferedReader().use { it.readText() }
+        // TODO: make a viewmodel for the data - see https://developer.android.com/topic/libraries/architecture/viewmodel
+        //val chineseData: String = assets.open("chinese.json").bufferedReader().use { it.readText() }
         val japaneseData: String = assets.open("japanese.json").bufferedReader().use { it.readText() }
 
         val gson = Gson()
 
-        val chineseJson = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
+        //val chineseJson = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
+        var chineseJson = emptyArray<Any>()
         val japaneseJson = gson.fromJson(japaneseData, Array<JapaneseJSONObject>::class.java) as Array<Any>
 
         //Log.i("INFO", json[0].value)
         //Log.i("INFO", data)
+
+        val localChineseDataFilename = "flashcards_chinese_data.json"
+
+        // try fetching chinese data json via url and add to cache
+        // TODO: this doesn't show the fetched data immediately because it's async. can we await?
+        val hasInternet = this.isConnectedToInternet()
+        if (hasInternet) {
+            lifecycleScope.launch {
+                Log.i("INFO", "attempting to get chinese data from url...")
+                withContext(Dispatchers.IO) {
+                    val json =
+                        URL("https://raw.githubusercontent.com/syncopika/flashcards/refs/heads/main/public/datasets/chinese.json").readText()
+                    chineseJson = gson.fromJson(json, Array<ChineseJSONObject>::class.java) as Array<Any>
+                    Log.i("INFO", "got chinese data from url!")
+
+                    // write data to cache
+                    applicationContext.openFileOutput(localChineseDataFilename, Context.MODE_PRIVATE).use {
+                        Log.i("INFO", "writing chinese data to cache...")
+                        it.write(json.toByteArray())
+                    }
+                }
+            }
+        } else {
+            // if that doesn't work, use the cache
+            val file = File(applicationContext.filesDir, localChineseDataFilename)
+            if (file.exists()) {
+                Log.i("INFO", "no internet, pulling data from cache...")
+                val chineseData: String = applicationContext.openFileInput(localChineseDataFilename).bufferedReader().use { it.readText() }
+                chineseJson = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
+            } else {
+                // no cached file, just use asset file (might be outdated though)
+                Log.i("INFO", "no internet + no cached file, using data from /assets")
+                val chineseData: String = assets.open("chinese.json").bufferedReader().use { it.readText() }
+                chineseJson = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
+            }
+        }
 
         setContent {
             FlashcardsTheme {
@@ -382,6 +428,24 @@ class MainActivity : ComponentActivity() {
             } // end FlashcardsTheme
         } // end setContent
     } // end onCreate
+
+    // https://stackoverflow.com/questions/51141970/check-internet-connectivity-android-in-kotlin
+     private fun isConnectedToInternet(): Boolean {
+        val connManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (connManager != null) {
+            val netCapabilities = connManager.getNetworkCapabilities(connManager.activeNetwork)
+            if(netCapabilities != null){
+                if(netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)){
+                    return true
+                }else if(netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)){
+                    return true
+                }else if(netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)){
+                    return true
+                }
+            }
+        }
+        return false
+    }
 }
 
 @Composable

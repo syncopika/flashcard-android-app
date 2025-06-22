@@ -29,7 +29,11 @@ https://stackoverflow.com/questions/71090111/how-to-draw-on-jetpack-compose-canv
 https://stackoverflow.com/questions/67185495/draw-two-buttons-in-a-row-using-jetpack-compose
 https://stackoverflow.com/questions/58743541/how-to-get-context-in-jetpack-compose
 https://stackoverflow.com/questions/68909340/how-to-show-snackbar-with-a-button-onclick-in-jetpack-compose
+https://stackoverflow.com/questions/47971972/how-to-properly-use-the-url-with-kotlin-android
+https://developer.android.com/training/data-storage/app-specific#internal-access-files
+https://stackoverflow.com/questions/34964337/write-data-to-local-json-file
+https://stackoverflow.com/questions/47971972/how-to-properly-use-the-url-with-kotlin-android
+https://stackoverflow.com/questions/77550167/how-to-update-ui-on-async-callbacks-in-jetpack-compose
 
 TODO:
 - guessing game mode?
-- still need to fix drawing on the canvas
