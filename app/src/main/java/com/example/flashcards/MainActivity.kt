@@ -75,6 +75,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.lifecycleScope
 import com.example.flashcards.ui.theme.DrawingCanvas
 import com.example.flashcards.ui.theme.FlashcardsTheme
@@ -130,12 +131,12 @@ fun filterCardsChinese(cards: Array<Any>, searchType: String, searchText: String
         } else if (searchType == "front") {
             (it as ChineseJSONObject).value.contains(searchText)
         } else if (searchType == "back") {
-            (it as ChineseJSONObject).definition.contains(searchText) || (it as ChineseJSONObject).pinyin.contains(searchText)
+            (it as ChineseJSONObject).definition.contains(searchText) || it.pinyin.contains(searchText)
         } else if (searchType == "pinyin") {
             (it as ChineseJSONObject).pinyin.contains(searchText)
         } else if(searchType == "tag") {
             if ((it as ChineseJSONObject).tags != null) {
-                (it as ChineseJSONObject).tags.contains(searchText)
+                it.tags.contains(searchText)
             } else {
                 false
             }
@@ -152,7 +153,7 @@ fun filterCardsJapanese(cards: Array<Any>, searchType: String, searchText: Strin
         } else if (searchType == "front") {
             (it as JapaneseJSONObject).value.contains(searchText)
         } else if (searchType == "back") {
-            (it as JapaneseJSONObject).definition.contains(searchText) || (it as JapaneseJSONObject).romaji.contains(searchText)
+            (it as JapaneseJSONObject).definition.contains(searchText) || it.romaji.contains(searchText)
         } else if (searchType == "romaji") {
             (it as JapaneseJSONObject).romaji.contains(searchText)
         } else {
@@ -166,23 +167,20 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // TODO: make a viewmodel for the data - see https://developer.android.com/topic/libraries/architecture/viewmodel
-        //val chineseData: String = assets.open("chinese.json").bufferedReader().use { it.readText() }
-        val japaneseData: String = assets.open("japanese.json").bufferedReader().use { it.readText() }
+        // TODO: use a viewmodel for the data? - see https://developer.android.com/topic/libraries/architecture/viewmodel
+        // https://stackoverflow.com/questions/44318859/fetching-a-url-in-android-kotlin-asynchronously
 
         val gson = Gson()
 
-        //val chineseJson = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
-        var chineseJson = emptyArray<Any>()
+        var chineseJson = emptyArray<Any>() // will be fetched from latest version of JSON data via url
+
+        val japaneseData: String = assets.open("japanese.json").bufferedReader().use { it.readText() }
         val japaneseJson = gson.fromJson(japaneseData, Array<JapaneseJSONObject>::class.java) as Array<Any>
 
-        //Log.i("INFO", json[0].value)
-        //Log.i("INFO", data)
-
+        // the name of the local file to cache
         val localChineseDataFilename = "flashcards_chinese_data.json"
 
         // try fetching chinese data json via url and add to cache
-        // TODO: this doesn't show the fetched data immediately because it's async. can we await?
         val hasInternet = this.isConnectedToInternet()
         if (hasInternet) {
             lifecycleScope.launch {
@@ -216,7 +214,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            FlashcardsTheme {
+            FlashcardsTheme() {
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed) {
                     hideKeyboard()
                     true
@@ -229,7 +227,7 @@ class MainActivity : ComponentActivity() {
                 val (selectedOption, onOptionSelected) = remember { mutableStateOf(searchOptions.value[0]) }
 
                 // when the list of filtered cards changes, the view should be updated accordingly
-                var filteredCards by remember { mutableStateOf<Array<Any>>(chineseJson.copyOf() as Array<Any>) }
+                var filteredCards by remember { mutableStateOf(chineseJson.copyOf()) }
                 var currIndex by remember { mutableStateOf(0) }
 
                 var showDrawingCanvas by remember { mutableStateOf(false) }
@@ -237,7 +235,7 @@ class MainActivity : ComponentActivity() {
                 val snackbarHostState = remember { SnackbarHostState() }
 
                 var languageSelectionDropdownExpanded by remember { mutableStateOf(false) }
-                var currFlashcardLanguage by remember { mutableStateOf<String>("chinese") }
+                var currFlashcardLanguage by remember { mutableStateOf("chinese") }
 
                 // pencil icon composable to add to the search bar to provide
                 // an option of writing a character to search for
@@ -341,11 +339,34 @@ class MainActivity : ComponentActivity() {
                                 }) {
                                     Text("shuffle")
                                 }
+
+                                // add this refresh button to specifically help actually show the card
+                                // data for Chinese after it gets asynchronously loaded via url
+                                //
+                                // we should figure out how to do this properly at some point with a viewModel
+                                // but my situation is made more complicated I think with having the network fetching + fallback
+                                // capability using a local file/assets and I'm too lazy to try to mess with viewModels atm
+                                // (they look kinda complicated/annoying to implement lol)
+                                //
+                                // in the meantime though, this works well enough
+                                Button(onClick = {
+                                    filteredCards = chineseJson.copyOf()
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            "refreshed data!",
+                                            null,
+                                            false,
+                                            SnackbarDuration.Short
+                                        )
+                                    }
+                                }) {
+                                    Text("refresh")
+                                }
                             }
                         },
                     ) {
                         Scaffold(
-                            snackbarHost = { SnackbarHost(snackbarHostState) },
+                            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                             topBar = {
                                 TopAppBar(
                                     colors = topAppBarColors(

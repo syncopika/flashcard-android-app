@@ -34,6 +34,7 @@ https://developer.android.com/training/data-storage/app-specific#internal-access
 https://stackoverflow.com/questions/34964337/write-data-to-local-json-file
 https://stackoverflow.com/questions/47971972/how-to-properly-use-the-url-with-kotlin-android
 https://stackoverflow.com/questions/77550167/how-to-update-ui-on-async-callbacks-in-jetpack-compose
+https://stackoverflow.com/questions/75762170/how-can-i-access-a-json-file-in-the-viewmodel-class
 
 TODO:
 - guessing game mode?
