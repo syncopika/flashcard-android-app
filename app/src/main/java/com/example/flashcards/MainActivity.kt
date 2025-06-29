@@ -2,6 +2,8 @@ package com.example.flashcards
 
 import android.app.Activity
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -68,10 +70,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.zIndex
+import androidx.lifecycle.lifecycleScope
 import com.example.flashcards.ui.theme.DrawingCanvas
 import com.example.flashcards.ui.theme.FlashcardsTheme
 import com.google.gson.Gson
@@ -86,7 +91,11 @@ import com.google.mlkit.vision.digitalink.DigitalInkRecognizer
 import com.google.mlkit.vision.digitalink.DigitalInkRecognizerOptions
 import com.google.mlkit.vision.digitalink.Ink
 import com.google.mlkit.vision.digitalink.RecognitionResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.net.URL
 import kotlin.random.Random
 
 // {"value": "搖頭晃腦", "pinyin": "yao2 tou2 huang4 nao3", "definition": "to look pleased with one's self", "tags": ["idiom"]},
@@ -122,12 +131,12 @@ fun filterCardsChinese(cards: Array<Any>, searchType: String, searchText: String
         } else if (searchType == "front") {
             (it as ChineseJSONObject).value.contains(searchText)
         } else if (searchType == "back") {
-            (it as ChineseJSONObject).definition.contains(searchText) || (it as ChineseJSONObject).pinyin.contains(searchText)
+            (it as ChineseJSONObject).definition.contains(searchText) || it.pinyin.contains(searchText)
         } else if (searchType == "pinyin") {
             (it as ChineseJSONObject).pinyin.contains(searchText)
         } else if(searchType == "tag") {
             if ((it as ChineseJSONObject).tags != null) {
-                (it as ChineseJSONObject).tags.contains(searchText)
+                it.tags.contains(searchText)
             } else {
                 false
             }
@@ -144,7 +153,7 @@ fun filterCardsJapanese(cards: Array<Any>, searchType: String, searchText: Strin
         } else if (searchType == "front") {
             (it as JapaneseJSONObject).value.contains(searchText)
         } else if (searchType == "back") {
-            (it as JapaneseJSONObject).definition.contains(searchText) || (it as JapaneseJSONObject).romaji.contains(searchText)
+            (it as JapaneseJSONObject).definition.contains(searchText) || it.romaji.contains(searchText)
         } else if (searchType == "romaji") {
             (it as JapaneseJSONObject).romaji.contains(searchText)
         } else {
@@ -158,19 +167,54 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val chineseData: String = assets.open("chinese.json").bufferedReader().use { it.readText() }
-        val japaneseData: String = assets.open("japanese.json").bufferedReader().use { it.readText() }
+        // TODO: use a viewmodel for the data? - see https://developer.android.com/topic/libraries/architecture/viewmodel
+        // https://stackoverflow.com/questions/44318859/fetching-a-url-in-android-kotlin-asynchronously
 
         val gson = Gson()
 
-        val chineseJson = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
+        var chineseJson = emptyArray<Any>() // will be fetched from latest version of JSON data via url
+
+        val japaneseData: String = assets.open("japanese.json").bufferedReader().use { it.readText() }
         val japaneseJson = gson.fromJson(japaneseData, Array<JapaneseJSONObject>::class.java) as Array<Any>
 
-        //Log.i("INFO", json[0].value)
-        //Log.i("INFO", data)
+        // the name of the local file to cache
+        val localChineseDataFilename = "flashcards_chinese_data.json"
+
+        // try fetching chinese data json via url and add to cache
+        val hasInternet = this.isConnectedToInternet()
+        if (hasInternet) {
+            lifecycleScope.launch {
+                Log.i("INFO", "attempting to get chinese data from url...")
+                withContext(Dispatchers.IO) {
+                    val json =
+                        URL("https://raw.githubusercontent.com/syncopika/flashcards/refs/heads/main/public/datasets/chinese.json").readText()
+                    chineseJson = gson.fromJson(json, Array<ChineseJSONObject>::class.java) as Array<Any>
+                    Log.i("INFO", "got chinese data from url!")
+
+                    // write data to cache
+                    applicationContext.openFileOutput(localChineseDataFilename, Context.MODE_PRIVATE).use {
+                        Log.i("INFO", "writing chinese data to cache...")
+                        it.write(json.toByteArray())
+                    }
+                }
+            }
+        } else {
+            // if that doesn't work, use the cache
+            val file = File(applicationContext.filesDir, localChineseDataFilename)
+            if (file.exists()) {
+                Log.i("INFO", "no internet, pulling data from cache...")
+                val chineseData: String = applicationContext.openFileInput(localChineseDataFilename).bufferedReader().use { it.readText() }
+                chineseJson = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
+            } else {
+                // no cached file, just use asset file (might be outdated though)
+                Log.i("INFO", "no internet + no cached file, using data from /assets")
+                val chineseData: String = assets.open("chinese.json").bufferedReader().use { it.readText() }
+                chineseJson = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
+            }
+        }
 
         setContent {
-            FlashcardsTheme {
+            FlashcardsTheme() {
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed) {
                     hideKeyboard()
                     true
@@ -183,7 +227,7 @@ class MainActivity : ComponentActivity() {
                 val (selectedOption, onOptionSelected) = remember { mutableStateOf(searchOptions.value[0]) }
 
                 // when the list of filtered cards changes, the view should be updated accordingly
-                var filteredCards by remember { mutableStateOf<Array<Any>>(chineseJson.copyOf() as Array<Any>) }
+                var filteredCards by remember { mutableStateOf(chineseJson.copyOf()) }
                 var currIndex by remember { mutableStateOf(0) }
 
                 var showDrawingCanvas by remember { mutableStateOf(false) }
@@ -191,7 +235,7 @@ class MainActivity : ComponentActivity() {
                 val snackbarHostState = remember { SnackbarHostState() }
 
                 var languageSelectionDropdownExpanded by remember { mutableStateOf(false) }
-                var currFlashcardLanguage by remember { mutableStateOf<String>("chinese") }
+                var currFlashcardLanguage by remember { mutableStateOf("chinese") }
 
                 // pencil icon composable to add to the search bar to provide
                 // an option of writing a character to search for
@@ -295,11 +339,34 @@ class MainActivity : ComponentActivity() {
                                 }) {
                                     Text("shuffle")
                                 }
+
+                                // add this refresh button to specifically help actually show the card
+                                // data for Chinese after it gets asynchronously loaded via url
+                                //
+                                // we should figure out how to do this properly at some point with a viewModel
+                                // but my situation is made more complicated I think with having the network fetching + fallback
+                                // capability using a local file/assets and I'm too lazy to try to mess with viewModels atm
+                                // (they look kinda complicated/annoying to implement lol)
+                                //
+                                // in the meantime though, this works well enough
+                                Button(onClick = {
+                                    filteredCards = chineseJson.copyOf()
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            "refreshed data!",
+                                            null,
+                                            false,
+                                            SnackbarDuration.Short
+                                        )
+                                    }
+                                }) {
+                                    Text("refresh")
+                                }
                             }
                         },
                     ) {
                         Scaffold(
-                            snackbarHost = { SnackbarHost(snackbarHostState) },
+                            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                             topBar = {
                                 TopAppBar(
                                     colors = topAppBarColors(
@@ -382,6 +449,24 @@ class MainActivity : ComponentActivity() {
             } // end FlashcardsTheme
         } // end setContent
     } // end onCreate
+
+    // https://stackoverflow.com/questions/51141970/check-internet-connectivity-android-in-kotlin
+     private fun isConnectedToInternet(): Boolean {
+        val connManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (connManager != null) {
+            val netCapabilities = connManager.getNetworkCapabilities(connManager.activeNetwork)
+            if(netCapabilities != null){
+                if(netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)){
+                    return true
+                }else if(netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)){
+                    return true
+                }else if(netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)){
+                    return true
+                }
+            }
+        }
+        return false
+    }
 }
 
 @Composable
