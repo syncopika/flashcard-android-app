@@ -70,7 +70,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -263,6 +262,7 @@ class MainActivity : ComponentActivity() {
 
                 val scope = rememberCoroutineScope()
 
+                var filteredCards by remember { mutableStateOf(emptyArray<Any>()) }
                 var searchText by remember { mutableStateOf("") }
                 var searchOptions = remember { mutableStateOf(listOf("front", "back", "pinyin", "tag")) }
                 val (selectedOption, onOptionSelected) = remember { mutableStateOf(searchOptions.value[0]) }
@@ -277,7 +277,7 @@ class MainActivity : ComponentActivity() {
                     Log.i("DEBUG", "got chinese json data")
                 }
 
-                var filteredCards by remember { mutableStateOf(chineseJson.copyOf()) }
+                filteredCards = chineseJson.copyOf() // update filteredCards to be the new data we got via the view model
                 var currIndex by remember { mutableStateOf(0) }
 
                 var showDrawingCanvas by remember { mutableStateOf(false) }
