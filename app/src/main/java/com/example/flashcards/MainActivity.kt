@@ -58,7 +58,7 @@ import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -70,13 +70,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.zIndex
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.flashcards.ui.theme.DrawingCanvas
 import com.example.flashcards.ui.theme.FlashcardsTheme
 import com.google.gson.Gson
@@ -161,38 +161,43 @@ fun filterCardsJapanese(cards: Array<Any>, searchType: String, searchText: Strin
         }
     }.toTypedArray()
 }
+// ViewModel class for getting the flashcard data
+// https://developer.android.com/topic/libraries/architecture/viewmodel
+// https://stackoverflow.com/questions/44318859/fetching-a-url-in-android-kotlin-asynchronously
+// https://medium.com/@rzmeneghelo/building-a-jetpack-compose-view-with-viewmodel-9c8aca9795f4
+// this looks helpful? https://www.kodeco.com/24509368-repository-pattern-with-jetpack-compose
+// https://stackoverflow.com/questions/69034492/viewmodel-data-lost-on-rotation
+class FlashcardDataViewModel(context: Context) : ViewModel() {
+    val chineseJson = MutableLiveData<Array<Any>>()
+    //val japaneseJSON = MutableLiveData(emptyArray<Any>()) // TODO
 
-class MainActivity : ComponentActivity() {
-    @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    // the name of the local file to cache
+    private val localChineseDataFilename = "flashcards_chinese_data.json"
 
-        // TODO: use a viewmodel for the data? - see https://developer.android.com/topic/libraries/architecture/viewmodel
-        // https://stackoverflow.com/questions/44318859/fetching-a-url-in-android-kotlin-asynchronously
+    private val ctx = context
 
-        val gson = Gson()
+    private val gson = Gson()
 
-        var chineseJson = emptyArray<Any>() // will be fetched from latest version of JSON data via url
-
-        val japaneseData: String = assets.open("japanese.json").bufferedReader().use { it.readText() }
-        val japaneseJson = gson.fromJson(japaneseData, Array<JapaneseJSONObject>::class.java) as Array<Any>
-
-        // the name of the local file to cache
-        val localChineseDataFilename = "flashcards_chinese_data.json"
-
+    // this method gets our json data for the flashcards
+    fun fetchData(){
         // try fetching chinese data json via url and add to cache
         val hasInternet = this.isConnectedToInternet()
         if (hasInternet) {
-            lifecycleScope.launch {
+            viewModelScope.launch {
                 Log.i("INFO", "attempting to get chinese data from url...")
                 withContext(Dispatchers.IO) {
-                    val json =
-                        URL("https://raw.githubusercontent.com/syncopika/flashcards/refs/heads/main/public/datasets/chinese.json").readText()
-                    chineseJson = gson.fromJson(json, Array<ChineseJSONObject>::class.java) as Array<Any>
+                    val json = URL("https://raw.githubusercontent.com/syncopika/flashcards/refs/heads/main/public/datasets/chinese.json").readText()
+
+                    // https://stackoverflow.com/questions/53304347/mutablelivedata-cannot-invoke-setvalue-on-a-background-thread-from-coroutine
+                    chineseJson.postValue(gson.fromJson(json, Array<ChineseJSONObject>::class.java) as Array<Any>)
+
                     Log.i("INFO", "got chinese data from url!")
 
                     // write data to cache
-                    applicationContext.openFileOutput(localChineseDataFilename, Context.MODE_PRIVATE).use {
+                    ctx.openFileOutput(
+                        localChineseDataFilename,
+                        Context.MODE_PRIVATE
+                    ).use {
                         Log.i("INFO", "writing chinese data to cache...")
                         it.write(json.toByteArray())
                     }
@@ -200,18 +205,54 @@ class MainActivity : ComponentActivity() {
             }
         } else {
             // if that doesn't work, use the cache
-            val file = File(applicationContext.filesDir, localChineseDataFilename)
+            val file = File(ctx.filesDir, localChineseDataFilename)
             if (file.exists()) {
                 Log.i("INFO", "no internet, pulling data from cache...")
-                val chineseData: String = applicationContext.openFileInput(localChineseDataFilename).bufferedReader().use { it.readText() }
-                chineseJson = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
+                val chineseData: String = ctx.openFileInput(localChineseDataFilename).bufferedReader().use { it.readText() }
+                chineseJson.value = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
             } else {
                 // no cached file, just use asset file (might be outdated though)
                 Log.i("INFO", "no internet + no cached file, using data from /assets")
-                val chineseData: String = assets.open("chinese.json").bufferedReader().use { it.readText() }
-                chineseJson = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
+                val chineseData: String = ctx.assets.open("chinese.json").bufferedReader().use { it.readText() }
+                chineseJson.value = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
             }
         }
+    }
+
+    private fun isConnectedToInternet(): Boolean {
+        val connManager = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (connManager != null) {
+            val netCapabilities = connManager.getNetworkCapabilities(connManager.activeNetwork)
+            if(netCapabilities != null){
+                if(netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)){
+                    return true
+                }else if(netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)){
+                    return true
+                }else if(netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)){
+                    return true
+                }
+            }
+        }
+        return false
+    }
+}
+
+class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        // TODO: viewModel should be stored so it persists when rotating phone?
+        val viewModel = FlashcardDataViewModel(applicationContext)
+
+        val gson = Gson()
+
+        val japaneseData: String = assets.open("japanese.json").bufferedReader().use { it.readText() }
+        val japaneseJson = gson.fromJson(japaneseData, Array<JapaneseJSONObject>::class.java) as Array<Any>
+        Log.i("DEBUG", "got japanese card data")
+
+        // use view model for getting flashcard data
+        viewModel.fetchData()
 
         setContent {
             FlashcardsTheme() {
@@ -222,13 +263,12 @@ class MainActivity : ComponentActivity() {
 
                 val scope = rememberCoroutineScope()
 
+                var filteredCards by remember { mutableStateOf(emptyArray<Any>()) }
                 var searchText by remember { mutableStateOf("") }
                 var searchOptions = remember { mutableStateOf(listOf("front", "back", "pinyin", "tag")) }
                 val (selectedOption, onOptionSelected) = remember { mutableStateOf(searchOptions.value[0]) }
 
-                // when the list of filtered cards changes, the view should be updated accordingly
-                var filteredCards by remember { mutableStateOf(chineseJson.copyOf()) }
-                var currIndex by remember { mutableStateOf(0) }
+                var currIndex by remember { mutableStateOf(0) } // current flashcard index
 
                 var showDrawingCanvas by remember { mutableStateOf(false) }
 
@@ -236,6 +276,27 @@ class MainActivity : ComponentActivity() {
 
                 var languageSelectionDropdownExpanded by remember { mutableStateOf(false) }
                 var currFlashcardLanguage by remember { mutableStateOf("chinese") }
+
+                //Log.i("DEBUG", "setting up app theme...")
+
+                var chineseDataLoaded by remember { mutableStateOf(false) }
+                val chineseJsonData by viewModel.chineseJson.observeAsState()
+                //Log.i("DEBUG", "state change detected...")
+                var chineseJson = chineseJsonData
+                if(chineseJson == null){
+                    Log.i("DEBUG", "chinese json data is null")
+                    chineseJson = emptyArray()
+                } else {
+                    Log.i("DEBUG", "got chinese json data")
+                }
+
+                // only assign chineseJson if we're loading that data the first time (so filteredCards should be an empty array)
+                // otherwise, don't reassign otherwise we will overwrite any filteredCards result via the filters or switching languages on recomposition
+                if (!chineseDataLoaded && !chineseJson.isNullOrEmpty()) {
+                    Log.i("DEBUG", "setting chinese data...")
+                    filteredCards = chineseJson.copyOf() // update filteredCards to be the new data we got via the view model
+                    chineseDataLoaded = true
+                }
 
                 // pencil icon composable to add to the search bar to provide
                 // an option of writing a character to search for
@@ -305,9 +366,17 @@ class MainActivity : ComponentActivity() {
                                                         onOptionSelected(text)
 
                                                         if (currFlashcardLanguage == "chinese") {
-                                                            filteredCards = filterCardsChinese(chineseJson, text, searchText)
+                                                            filteredCards = filterCardsChinese(
+                                                                chineseJson,
+                                                                text,
+                                                                searchText
+                                                            )
                                                         } else {
-                                                            filteredCards = filterCardsJapanese(japaneseJson, text, searchText)
+                                                            filteredCards = filterCardsJapanese(
+                                                                japaneseJson,
+                                                                text,
+                                                                searchText
+                                                            )
                                                         }
 
                                                         currIndex = 0
@@ -331,36 +400,20 @@ class MainActivity : ComponentActivity() {
                                 }
                                 
                                 Button(onClick = {
-                                    filteredCards.shuffle()
-                                    currIndex = Random.nextInt(0, filteredCards.size)
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("shuffled!", null, false, SnackbarDuration.Short)
+                                    if(filteredCards.size > 1){
+                                        filteredCards.shuffle()
+                                        currIndex = Random.nextInt(0, filteredCards.size)
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                "shuffled!",
+                                                null,
+                                                false,
+                                                SnackbarDuration.Short
+                                            )
+                                        }
                                     }
                                 }) {
                                     Text("shuffle")
-                                }
-
-                                // add this refresh button to specifically help actually show the card
-                                // data for Chinese after it gets asynchronously loaded via url
-                                //
-                                // we should figure out how to do this properly at some point with a viewModel
-                                // but my situation is made more complicated I think with having the network fetching + fallback
-                                // capability using a local file/assets and I'm too lazy to try to mess with viewModels atm
-                                // (they look kinda complicated/annoying to implement lol)
-                                //
-                                // in the meantime though, this works well enough
-                                Button(onClick = {
-                                    filteredCards = chineseJson.copyOf()
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            "refreshed data!",
-                                            null,
-                                            false,
-                                            SnackbarDuration.Short
-                                        )
-                                    }
-                                }) {
-                                    Text("refresh")
                                 }
                             }
                         },

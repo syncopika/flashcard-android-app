@@ -4,6 +4,8 @@ This app currently just has cards for Chinese and Japanese, which is based off h
     
 You can traverse the cards by swiping left and right. Tapping on the card will flip it. You can also search for a specific card based on the card text.   
     
+![screen recording of app](screenshots/screen-20251207-063511.mp4)    
+    
 some screenshots:    
 ![screenshot of flashcard front](screenshots/Screenshot_20240105-212644.png)   
 ![screenshot of flashcard back](screenshots/Screenshot_20240105-212702.png)     
