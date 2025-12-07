@@ -249,6 +249,7 @@ class MainActivity : ComponentActivity() {
 
         val japaneseData: String = assets.open("japanese.json").bufferedReader().use { it.readText() }
         val japaneseJson = gson.fromJson(japaneseData, Array<JapaneseJSONObject>::class.java) as Array<Any>
+        Log.i("DEBUG", "got japanese card data")
 
         // use view model for getting flashcard data
         viewModel.fetchData()
@@ -267,8 +268,20 @@ class MainActivity : ComponentActivity() {
                 var searchOptions = remember { mutableStateOf(listOf("front", "back", "pinyin", "tag")) }
                 val (selectedOption, onOptionSelected) = remember { mutableStateOf(searchOptions.value[0]) }
 
-                // when the list of filtered cards changes, the view should be updated accordingly
+                var currIndex by remember { mutableStateOf(0) } // current flashcard index
+
+                var showDrawingCanvas by remember { mutableStateOf(false) }
+
+                val snackbarHostState = remember { SnackbarHostState() }
+
+                var languageSelectionDropdownExpanded by remember { mutableStateOf(false) }
+                var currFlashcardLanguage by remember { mutableStateOf("chinese") }
+
+                //Log.i("DEBUG", "setting up app theme...")
+
+                var chineseDataLoaded by remember { mutableStateOf(false) }
                 val chineseJsonData by viewModel.chineseJson.observeAsState()
+                //Log.i("DEBUG", "state change detected...")
                 var chineseJson = chineseJsonData
                 if(chineseJson == null){
                     Log.i("DEBUG", "chinese json data is null")
@@ -277,15 +290,13 @@ class MainActivity : ComponentActivity() {
                     Log.i("DEBUG", "got chinese json data")
                 }
 
-                filteredCards = chineseJson.copyOf() // update filteredCards to be the new data we got via the view model
-                var currIndex by remember { mutableStateOf(0) }
-
-                var showDrawingCanvas by remember { mutableStateOf(false) }
-
-                val snackbarHostState = remember { SnackbarHostState() }
-
-                var languageSelectionDropdownExpanded by remember { mutableStateOf(false) }
-                var currFlashcardLanguage by remember { mutableStateOf("chinese") }
+                // only assign chineseJson if we're loading that data the first time (so filteredCards should be an empty array)
+                // otherwise, don't reassign otherwise we will overwrite any filteredCards result via the filters or switching languages on recomposition
+                if (!chineseDataLoaded && !chineseJson.isNullOrEmpty()) {
+                    Log.i("DEBUG", "setting chinese data...")
+                    filteredCards = chineseJson.copyOf() // update filteredCards to be the new data we got via the view model
+                    chineseDataLoaded = true
+                }
 
                 // pencil icon composable to add to the search bar to provide
                 // an option of writing a character to search for
@@ -403,29 +414,6 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }) {
                                     Text("shuffle")
-                                }
-
-                                // add this refresh button to specifically help actually show the card
-                                // data for Chinese after it gets asynchronously loaded via url
-                                //
-                                // we should figure out how to do this properly at some point with a viewModel
-                                // but my situation is made more complicated I think with having the network fetching + fallback
-                                // capability using a local file/assets and I'm too lazy to try to mess with viewModels atm
-                                // (they look kinda complicated/annoying to implement lol)
-                                //
-                                // in the meantime though, this works well enough
-                                Button(onClick = {
-                                    filteredCards = chineseJson.copyOf()
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            "refreshed data!",
-                                            null,
-                                            false,
-                                            SnackbarDuration.Short
-                                        )
-                                    }
-                                }) {
-                                    Text("refresh")
                                 }
                             }
                         },
