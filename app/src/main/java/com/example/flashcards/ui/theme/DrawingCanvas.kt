@@ -23,7 +23,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.google.mlkit.vision.digitalink.Ink
+import com.google.mlkit.vision.digitalink.recognition.Ink
 import kotlin.math.abs
 
 // https://github.com/syncopika/digital-ink-recognition-android/blob/main/app/src/main/java/com/example/digital_ink_recognition_and_ocr/CanvasView.kt
