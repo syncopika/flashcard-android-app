@@ -169,10 +169,11 @@ fun filterCardsJapanese(cards: Array<Any>, searchType: String, searchText: Strin
 // https://stackoverflow.com/questions/69034492/viewmodel-data-lost-on-rotation
 class FlashcardDataViewModel(context: Context) : ViewModel() {
     val chineseJson = MutableLiveData<Array<Any>>()
-    //val japaneseJSON = MutableLiveData(emptyArray<Any>()) // TODO
+    val japaneseJson = MutableLiveData<Array<Any>>()
 
     // the name of the local file to cache
     private val localChineseDataFilename = "flashcards_chinese_data.json"
+    private val localJapaneseDataFilename = "flashcards_japanese_data.json"
 
     private val ctx = context
 
@@ -184,12 +185,13 @@ class FlashcardDataViewModel(context: Context) : ViewModel() {
         val hasInternet = this.isConnectedToInternet()
         if (hasInternet) {
             viewModelScope.launch {
-                Log.i("INFO", "attempting to get chinese data from url...")
                 withContext(Dispatchers.IO) {
-                    val json = URL("https://raw.githubusercontent.com/syncopika/flashcards/refs/heads/main/public/datasets/chinese.json").readText()
+                    // try getting chinese json data
+                    Log.i("INFO", "attempting to get chinese data from url...")
+                    val chineseJsonSrc = URL("https://raw.githubusercontent.com/syncopika/flashcards/refs/heads/main/public/datasets/chinese.json").readText()
 
                     // https://stackoverflow.com/questions/53304347/mutablelivedata-cannot-invoke-setvalue-on-a-background-thread-from-coroutine
-                    chineseJson.postValue(gson.fromJson(json, Array<ChineseJSONObject>::class.java) as Array<Any>)
+                    chineseJson.postValue(gson.fromJson(chineseJsonSrc, Array<ChineseJSONObject>::class.java) as Array<Any>)
 
                     Log.i("INFO", "got chinese data from url!")
 
@@ -199,7 +201,25 @@ class FlashcardDataViewModel(context: Context) : ViewModel() {
                         Context.MODE_PRIVATE
                     ).use {
                         Log.i("INFO", "writing chinese data to cache...")
-                        it.write(json.toByteArray())
+                        it.write(chineseJsonSrc.toByteArray())
+                    }
+
+                    // try getting japanese json data
+                    Log.i("INFO", "attempting to get japanese data from url...")
+                    val japaneseJsonSrc = URL("https://raw.githubusercontent.com/syncopika/flashcards/refs/heads/main/public/datasets/japanese.json").readText()
+
+                    // https://stackoverflow.com/questions/53304347/mutablelivedata-cannot-invoke-setvalue-on-a-background-thread-from-coroutine
+                    japaneseJson.postValue(gson.fromJson(japaneseJsonSrc, Array<JapaneseJSONObject>::class.java) as Array<Any>)
+
+                    Log.i("INFO", "got japanese data from url!")
+
+                    // write data to cache
+                    ctx.openFileOutput(
+                        localJapaneseDataFilename,
+                        Context.MODE_PRIVATE
+                    ).use {
+                        Log.i("INFO", "writing japanese data to cache...")
+                        it.write(japaneseJsonSrc.toByteArray())
                     }
                 }
             }
@@ -210,11 +230,17 @@ class FlashcardDataViewModel(context: Context) : ViewModel() {
                 Log.i("INFO", "no internet, pulling data from cache...")
                 val chineseData: String = ctx.openFileInput(localChineseDataFilename).bufferedReader().use { it.readText() }
                 chineseJson.value = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
+
+                val japaneseData: String = ctx.openFileInput(localJapaneseDataFilename).bufferedReader().use { it.readText() }
+                japaneseJson.value = gson.fromJson(japaneseData, Array<JapaneseJSONObject>::class.java) as Array<Any>
             } else {
                 // no cached file, just use asset file (might be outdated though)
                 Log.i("INFO", "no internet + no cached file, using data from /assets")
                 val chineseData: String = ctx.assets.open("chinese.json").bufferedReader().use { it.readText() }
                 chineseJson.value = gson.fromJson(chineseData, Array<ChineseJSONObject>::class.java) as Array<Any>
+
+                val japaneseData: String = ctx.assets.open("japanese.json").bufferedReader().use { it.readText() }
+                japaneseJson.value = gson.fromJson(japaneseData, Array<JapaneseJSONObject>::class.java) as Array<Any>
             }
         }
     }
@@ -245,12 +271,6 @@ class MainActivity : ComponentActivity() {
         // TODO: viewModel should be stored so it persists when rotating phone?
         val viewModel = FlashcardDataViewModel(applicationContext)
 
-        val gson = Gson()
-
-        val japaneseData: String = assets.open("japanese.json").bufferedReader().use { it.readText() }
-        val japaneseJson = gson.fromJson(japaneseData, Array<JapaneseJSONObject>::class.java) as Array<Any>
-        Log.i("DEBUG", "got japanese card data")
-
         // use view model for getting flashcard data
         viewModel.fetchData()
 
@@ -277,11 +297,10 @@ class MainActivity : ComponentActivity() {
                 var languageSelectionDropdownExpanded by remember { mutableStateOf(false) }
                 var currFlashcardLanguage by remember { mutableStateOf("chinese") }
 
-                //Log.i("DEBUG", "setting up app theme...")
-
                 var chineseDataLoaded by remember { mutableStateOf(false) }
                 val chineseJsonData by viewModel.chineseJson.observeAsState()
-                //Log.i("DEBUG", "state change detected...")
+                val japaneseJsonData by viewModel.japaneseJson.observeAsState()
+
                 var chineseJson = chineseJsonData
                 if(chineseJson == null){
                     Log.i("DEBUG", "chinese json data is null")
@@ -290,12 +309,20 @@ class MainActivity : ComponentActivity() {
                     Log.i("DEBUG", "got chinese json data")
                 }
 
-                // only assign chineseJson if we're loading that data the first time (so filteredCards should be an empty array)
-                // otherwise, don't reassign otherwise we will overwrite any filteredCards result via the filters or switching languages on recomposition
+                // only assign chineseJson to filteredCards if we're loading that data the first time (so filteredCards should be an empty array)
+                // otherwise, don't reassign because otherwise we will overwrite any filteredCards result via the filters or switching languages on recomposition
+                // we only need to do this for chinese data because it's the first dataset we load and display
                 if (!chineseDataLoaded && !chineseJson.isNullOrEmpty()) {
                     Log.i("DEBUG", "setting chinese data...")
                     filteredCards = chineseJson.copyOf() // update filteredCards to be the new data we got via the view model
                     chineseDataLoaded = true
+                }
+
+                var japaneseJson = japaneseJsonData
+                if(japaneseJson == null){
+                    japaneseJson = emptyArray()
+                } else {
+                    Log.i("DEBUG", "got japanese json data")
                 }
 
                 // pencil icon composable to add to the search bar to provide
